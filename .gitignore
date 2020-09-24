@@ -1,0 +1,4 @@
+truffle/build
+truffle/node_modules
+truffle/package-lock.json
+smart-contracts
