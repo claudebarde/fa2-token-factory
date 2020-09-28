@@ -186,6 +186,7 @@ contract("FA2 Fungible Token Factory", () => {
   });
 
   it("should let Alice create an order", async () => {
+    // Alice sells 1000 AliTokens for 1000 BobTokens
     await signerFactory(alice.sk);
 
     const expectedOrderId = parseInt(storage.order_id_counter) + 1;
@@ -226,13 +227,21 @@ contract("FA2 Fungible Token Factory", () => {
   it("should let Bob fulfill Alice's order", async () => {
     await signerFactory(bob.sk);
 
-    const bobBalance = await storage.ledger.get({
+    const bobAliTokenBalance = await storage.ledger.get({
       0: bob.pkh,
       1: aliToken.id
     });
-    const aliceBalance = await storage.ledger.get({
+    const bobBobTokenBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: bobToken.id
+    });
+    const aliceAliTokenBalance = await storage.ledger.get({
       0: alice.pkh,
       1: aliToken.id
+    });
+    const aliceBobTokenBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: bobToken.id
     });
     const order = await storage.order_book.get(
       storage.order_id_counter.toString()
@@ -253,5 +262,44 @@ contract("FA2 Fungible Token Factory", () => {
       storage.order_id_counter.toString()
     );
     assert.isUndefined(removedOrder);
+
+    const bobAliTokenNewBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: aliToken.id
+    });
+    const bobBobTokenNewBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: bobToken.id
+    });
+    const aliceAliTokenNewBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: aliToken.id
+    });
+    const aliceBobTokenNewBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: bobToken.id
+    });
+
+    // Bob's aliToken balance += Alice's aliToken to sell
+    assert.equal(
+      bobAliTokenBalance.toNumber() + order.token_amount_to_sell.toNumber(),
+      bobAliTokenNewBalance.toNumber()
+    );
+    // Alice's bobToken balance = Alice's bobToken to buy
+    assert.equal(
+      (aliceBobTokenBalance ? aliceBobTokenBalance.toNumber() : 0) +
+        order.token_amount_to_buy.toNumber(),
+      aliceBobTokenNewBalance.toNumber()
+    );
+    // Bob's bobToken balance -= Alice's bobToken to buy
+    assert.equal(
+      bobBobTokenBalance.toNumber() - order.token_amount_to_buy.toNumber(),
+      bobBobTokenNewBalance.toNumber()
+    );
+    // Alice's aliToken balance -= Alice's aliToken to sell
+    assert.equal(
+      aliceAliTokenBalance.toNumber() - order.token_amount_to_sell.toNumber(),
+      aliceAliTokenNewBalance.toNumber()
+    );
   });
 });

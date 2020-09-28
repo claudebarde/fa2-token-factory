@@ -1024,7 +1024,7 @@ let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): mul
                 match Big_map.find_opt (Tezos.sender, order.token_id_to_buy) s.ledger with
                 | None -> (failwith "NO_BALANCE": nat)
                 | Some blc -> blc in
-            if buyer_balance < order.token_amount_to_sell
+            if buyer_balance < order.token_amount_to_buy
             then (failwith "INSUFFICIENT_TOKEN_BALANCE": multi_token_storage)
             else
                 (* Deducts tokens from buyer's balance to credit seller's balance *)
@@ -1032,15 +1032,15 @@ let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): mul
                     Big_map.update (Tezos.sender, order.token_id_to_buy) (Some (abs (buyer_balance - order.token_amount_to_buy))) s.ledger in
                 let seller_credited_ledger = 
                     match Big_map.find_opt (order.seller, order.token_id_to_buy) buyer_deducted_ledger with
-                    | None -> Big_map.add (order.seller, order.token_id_to_buy) order.token_amount_to_buy s.ledger
+                    | None -> Big_map.add (order.seller, order.token_id_to_buy) order.token_amount_to_buy buyer_deducted_ledger
                     | Some blc ->
-                        Big_map.update (order.seller, order.token_id_to_buy) (Some (blc + order.token_amount_to_buy)) s.ledger in
+                        Big_map.update (order.seller, order.token_id_to_buy) (Some (blc + order.token_amount_to_buy)) buyer_deducted_ledger in
                 (* Deducts tokens from seller's balance to credit buyer's balance *)
                 let temp_ledger1 = 
                     match Big_map.find_opt (order.seller, order.token_id_to_sell) seller_credited_ledger with
                     | None -> (failwith "NO_ACCOUNT_FOUND": ledger)
                     | Some blc -> 
-                        Big_map.update (order.seller, order.token_id_to_sell) (Some (abs (blc - order.token_id_to_sell))) seller_credited_ledger in
+                        Big_map.update (order.seller, order.token_id_to_sell) (Some (abs (blc - order.token_amount_to_sell))) seller_credited_ledger in
                 let temp_ledger2 =
                     match Big_map.find_opt (Tezos.sender, order.token_id_to_sell) temp_ledger1 with
                     | None -> (failwith "NO_ACCOUNT_FOUND": ledger)
