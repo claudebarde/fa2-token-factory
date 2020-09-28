@@ -2,13 +2,15 @@
   "name": "tezos-bare-box",
   "version": "2.0.0",
   "description": "Tezos Bare Box =================",
-  "dependencies": {},
+  "dependencies": {
+    "@taquito/taquito": "^6.3.5-beta.0"
+  },
   "devDependencies": {
     "ganache-cli": "^6.10.0-tezos.1"
   },
   "scripts": {
     "start-sandbox": "ganache-cli --flavor tezos --seed alice",
-    "compile-contract": "ligo preprocess ../smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo > ./contracts/FA2TokenFactory.mligo"
+    "compile-contract": "cd .. && cd smart-contracts && ligo preprocess ./multi_asset/ligo/src/fa2_multi_token.mligo > ../truffle/contracts/FA2TokenFactory.mligo"
   },
   "repository": {
     "type": "git",
