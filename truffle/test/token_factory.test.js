@@ -9,7 +9,7 @@ contract("FA2 Fungible Token Factory", () => {
   let signerFactory;
 
   const aliToken = {
-    id: 1,
+    id: 2,
     symbol: "ALICE",
     name: "Alice",
     decimals: 0,
@@ -18,7 +18,7 @@ contract("FA2 Fungible Token Factory", () => {
   };
 
   const bobToken = {
-    id: 2,
+    id: 3,
     symbol: "BOB",
     name: "Bob",
     decimals: 0,
@@ -37,6 +37,13 @@ contract("FA2 Fungible Token Factory", () => {
 
   it("should show initial counter at 0", () => {
     assert.equal(storage.order_id_counter, 0);
+  });
+
+  it("should have wToken initialized with ID 1 and 0 total supply", async () => {
+    const token = await storage.token_total_supply.get("1");
+    assert.equal(token.toNumber(), 0);
+    const metadata = await storage.token_metadata.get("1");
+    assert.equal(metadata.name, "wToken");
   });
 
   it("should mint Alice tokens", async () => {
@@ -300,6 +307,113 @@ contract("FA2 Fungible Token Factory", () => {
     assert.equal(
       aliceAliTokenBalance.toNumber() - order.token_amount_to_sell.toNumber(),
       aliceAliTokenNewBalance.toNumber()
+    );
+  });
+
+  it("should mint wTokens for Alice", async () => {
+    await signerFactory(alice.sk);
+
+    const aliceBalance = await Tezos.tz.getBalance(alice.pkh);
+    const contractBalance = await Tezos.tz.getBalance(fa2_address);
+    const amount = 10;
+
+    try {
+      const op = await fa2_instance.methods
+        .buy_xtz_wrapper([["unit"]])
+        .send({ amount: amount * 10 ** 6, mutez: true });
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+    // checks if XTZ has been deducted from Alice's balance
+    const aliceNewBalance = await Tezos.tz.getBalance(alice.pkh);
+    assert.isBelow(
+      aliceNewBalance.toNumber(),
+      aliceBalance.toNumber() - amount * 10 ** 6
+    );
+    // checks if contract balance has been increased
+    const contractNewBalance = await Tezos.tz.getBalance(fa2_address);
+    assert.equal(
+      contractNewBalance.toNumber(),
+      contractBalance.toNumber() + amount * 10 ** 6
+    );
+    // checks Alice's token balance
+    storage = await fa2_instance.storage();
+    const tokenBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: 1
+    });
+    assert.equal(amount * 10 ** 6, tokenBalance.toNumber());
+  });
+
+  it("should transfer half of Alice's wToken balance to Bob", async () => {
+    const aliceBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: 1
+    });
+
+    try {
+      const op = await fa2_instance.methods
+        .transfer([
+          {
+            from_: alice.pkh,
+            txs: [
+              { to_: bob.pkh, token_id: 1, amount: aliceBalance.toNumber() / 2 }
+            ]
+          }
+        ])
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    storage = await fa2_instance.storage();
+
+    const bobBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: 1
+    });
+
+    assert.equal(bobBalance.toNumber(), aliceBalance.toNumber() / 2);
+  });
+
+  it("should let Bob redeem his wTokens", async () => {
+    await signerFactory(bob.sk);
+
+    const bobBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: 1
+    });
+    const contractBalance = await Tezos.tz.getBalance(fa2_address);
+    const wrapperSupply = await storage.token_total_supply.get("1");
+
+    try {
+      const op = await fa2_instance.methods
+        .redeem_xtz_wrapper(bobBalance.toNumber())
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    storage = await fa2_instance.storage();
+
+    const bobNewBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: 1
+    });
+    const contractNewBalance = await Tezos.tz.getBalance(fa2_address);
+    const wrapperNewSupply = await storage.token_total_supply.get("1");
+
+    assert.equal(bobNewBalance.toNumber(), 0);
+    assert.equal(
+      contractNewBalance.toNumber(),
+      contractBalance.toNumber() - bobBalance.toNumber()
+    );
+    assert.equal(
+      wrapperNewSupply.toNumber(),
+      wrapperSupply.toNumber() - bobBalance.toNumber()
     );
   });
 });

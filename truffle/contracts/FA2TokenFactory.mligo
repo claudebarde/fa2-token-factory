@@ -138,6 +138,8 @@ type fa2_entry_points =
   | Burn_tokens of token_id * nat
   | New_exchange_order of exchange_order_params_michelson
   | Buy_from_exchange of order_id * nat
+  | Buy_xtz_wrapper of unit
+  | Redeem_xtz_wrapper of nat
 
 
 type fa2_token_metadata =
@@ -316,6 +318,8 @@ tools.
 
 
 # 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
+
+
 
 
 
@@ -1056,6 +1060,59 @@ let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): mul
             (failwith "INVALID_AMOUNT": multi_token_storage)
         else
             (failwith "INVALID_AMOUNT": multi_token_storage)
+
+let buy_xtz_wrapper (s: multi_token_storage): multi_token_storage =
+    (* This function wraps XTZ into an FA2 tokens users can use on the platform *)
+    let wrapper_id = 1n in
+    (* The amount sent is turned into the wrapping token *)
+    if Tezos.amount = 0mutez
+    then (failwith "NO_AMOUNT_PROVIDED": multi_token_storage)
+    else   
+        (* checks if user already has an account with the wrapper token *)
+        let user_balance = 
+            match Big_map.find_opt (Tezos.sender, wrapper_id) s.ledger with
+            | None -> Tezos.amount / 1mutez
+            | Some blc -> blc + Tezos.amount / 1mutez in
+        (* updates wToken total supply *)
+        let new_token_total_supply = 
+            match Big_map.find_opt wrapper_id s.token_total_supply with
+            | None -> (failwith "NO_WTOKEN": nat)
+            | Some supply -> supply + (Tezos.amount / 1mutez) in 
+        (* Returns updated storage with balance *)
+        { s with 
+            ledger = Big_map.update (Tezos.sender, 1n) (Some (user_balance)) s.ledger;
+            token_total_supply = Big_map.update wrapper_id (Some (new_token_total_supply)) s.token_total_supply }
+
+let redeem_xtz_wrapper ((xtz_amount, s): nat * multi_token_storage): operation * multi_token_storage =
+    let wrapper_id = 1n in
+    (* checks if user has an account with XTZ wrappers in it *)
+    let user_balance = 
+        match Big_map.find_opt (Tezos.sender, 1n) s.ledger with
+        | None -> (failwith "NO_ACCOUNT": nat)
+        | Some blc -> 
+            if blc = 0n 
+            then (failwith "NO_BALANCE": nat) 
+            else if blc < xtz_amount 
+            then (failwith "INSUFFICIENT_BALANCE": nat) 
+            else blc in
+    (* Transfers the requested amount back to the user *)
+    let recipient: unit contract = 
+        match ((Tezos.get_contract_opt Tezos.sender): unit contract option) with
+        | None -> (failwith "CONTRACT_ERROR": unit contract)
+        | Some addr -> addr in
+    let op: operation = Tezos.transaction unit (xtz_amount * 1mutez) recipient in 
+    (* Deducts the amount from the balance *)
+    let new_balance: nat = abs (user_balance - xtz_amount) in
+    let new_ledger = Big_map.update (Tezos.sender, wrapper_id) (Some (new_balance)) s.ledger in
+    (* updates wToken total supply *)
+    let new_token_total_supply = 
+        match Big_map.find_opt wrapper_id s.token_total_supply with
+        | None -> (failwith "NO_WTOKEN": nat)
+        | Some supply -> abs (supply - xtz_amount) in 
+    (* Returns the updated storage and the operation *)
+    (op, { s with 
+        ledger = new_ledger; 
+        token_total_supply = Big_map.update wrapper_id (Some (new_token_total_supply)) s.token_total_supply })
 # 29 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 let get_balance_amt (key, ledger : (address * nat) * ledger) : nat =
@@ -1165,5 +1222,13 @@ let main (param, storage : fa2_entry_points * multi_token_storage)
   | Buy_from_exchange params ->
     let new_storage = buy_from_exchange (params, storage) in
     ([] : operation list), new_storage 
+
+  | Buy_xtz_wrapper params ->
+    let new_storage = buy_xtz_wrapper (storage) in
+    ([]: operation list), new_storage
+
+  | Redeem_xtz_wrapper params ->
+    let (op, new_storage) = redeem_xtz_wrapper (params, storage) in
+    [op], new_storage
 
 
