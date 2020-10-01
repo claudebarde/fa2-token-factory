@@ -416,4 +416,129 @@ contract("FA2 Fungible Token Factory", () => {
       wrapperSupply.toNumber() - bobBalance.toNumber()
     );
   });
+
+  it("should let Bob create an order", async () => {
+    await signerFactory(bob.sk);
+    // Bob sells 1000 BobTokens for 1000 AliTokens
+
+    const expectedOrderId = parseInt(storage.order_id_counter) + 1;
+    const tokenAmountToSell = 1000;
+    const tokenAmountToBuy = 855;
+
+    try {
+      const op = await fa2_instance.methods
+        .new_exchange_order(
+          "buy",
+          [["unit"]],
+          bobToken.id,
+          tokenAmountToSell,
+          aliToken.id,
+          tokenAmountToBuy
+        )
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    storage = await fa2_instance.storage();
+
+    assert.equal(expectedOrderId, parseInt(storage.order_id_counter));
+
+    const order = await storage.order_book.get(expectedOrderId.toString());
+
+    assert.property(order.order_type, "buy");
+    assert.isTrue(typeof order.order_type.buy === "symbol");
+    assert.equal(order.token_id_to_sell, bobToken.id);
+    assert.equal(order.token_amount_to_sell, tokenAmountToSell);
+    assert.equal(order.token_id_to_buy, aliToken.id);
+    assert.equal(order.token_amount_to_buy, tokenAmountToBuy);
+    assert.equal(order.seller, bob.pkh);
+  });
+
+  it("should let Alice get half of Bob's order", async () => {
+    await signerFactory(alice.sk);
+
+    const bobAliTokenBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: aliToken.id
+    });
+    const bobBobTokenBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: bobToken.id
+    });
+    const aliceAliTokenBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: aliToken.id
+    });
+    const aliceBobTokenBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: bobToken.id
+    });
+    const order = await storage.order_book.get(
+      storage.order_id_counter.toString()
+    );
+
+    try {
+      const op = await fa2_instance.methods
+        .buy_from_exchange(
+          storage.order_id_counter,
+          order.token_amount_to_sell / 2
+        )
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    storage = await fa2_instance.storage();
+
+    const updatedOrder = await storage.order_book.get(
+      storage.order_id_counter.toString()
+    );
+    assert.notEqual(
+      order.token_amount_to_sell,
+      updatedOrder.token_amount_to_sell
+    );
+
+    const bobAliTokenNewBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: aliToken.id
+    });
+    const bobBobTokenNewBalance = await storage.ledger.get({
+      0: bob.pkh,
+      1: bobToken.id
+    });
+    const aliceAliTokenNewBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: aliToken.id
+    });
+    const aliceBobTokenNewBalance = await storage.ledger.get({
+      0: alice.pkh,
+      1: bobToken.id
+    });
+
+    /*
+    // Bob's aliToken balance += Alice's aliToken to sell
+    assert.equal(
+      bobAliTokenBalance.toNumber() + order.token_amount_to_sell.toNumber(),
+      bobAliTokenNewBalance.toNumber()
+    );
+    // Alice's bobToken balance = Alice's bobToken to buy
+    assert.equal(
+      (aliceBobTokenBalance ? aliceBobTokenBalance.toNumber() : 0) +
+        order.token_amount_to_buy.toNumber(),
+      aliceBobTokenNewBalance.toNumber()
+    );
+    // Bob's bobToken balance -= Alice's bobToken to buy
+    assert.equal(
+      bobBobTokenBalance.toNumber() - order.token_amount_to_buy.toNumber(),
+      bobBobTokenNewBalance.toNumber()
+    );
+    // Alice's aliToken balance -= Alice's aliToken to sell
+    assert.equal(
+      aliceAliTokenBalance.toNumber() - order.token_amount_to_sell.toNumber(),
+      aliceAliTokenNewBalance.toNumber()
+    );*/
+  });
 });
