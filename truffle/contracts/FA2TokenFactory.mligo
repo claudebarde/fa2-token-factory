@@ -116,6 +116,7 @@ type order_book_entry = {
   token_amount_to_sell: nat;
   token_id_to_buy: token_id;
   token_amount_to_buy: nat;
+  total_token_amount: nat;
   seller: address;
 }
 
@@ -125,9 +126,12 @@ type exchange_order_params = {
   token_amount_to_sell: nat;
   token_id_to_buy: token_id;
   token_amount_to_buy: nat;
+  total_token_amount: nat; (* total amount of token to sell *)
 }
 
 type exchange_order_params_michelson = exchange_order_params michelson_pair_right_comb
+
+type token_amounts_to_swap = { to_buy: nat; to_sell: nat }
 
 type fa2_entry_points =
   | Transfer of transfer_michelson list
@@ -318,6 +322,10 @@ tools.
 
 
 # 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
+
+
+
+
 
 
 
@@ -997,6 +1005,7 @@ let set_on_exchange ((params, s): exchange_order_params_michelson * multi_token_
                 token_amount_to_sell = exchange_order.token_amount_to_sell;
                 token_id_to_buy = exchange_order.token_id_to_buy;
                 token_amount_to_buy = exchange_order.token_amount_to_buy;
+                total_token_amount = exchange_order.total_token_amount;
                 seller = Tezos.sender;
             } in 
             (* Creates a new order id *)
@@ -1011,28 +1020,37 @@ let swap (buyer: address) (seller: address) (order: order_book_entry) (ledger: l
         match Big_map.find_opt (buyer, order.token_id_to_buy) ledger with
         | None -> (failwith "NO_BALANCE": nat)
         | Some blc -> blc in
-    if buyer_balance < order.token_amount_to_buy
+    if buyer_balance < order.token_amount_to_buy * order.total_token_amount
     then (failwith "INSUFFICIENT_TOKEN_BALANCE": ledger)
     else
+        (* Calculates amounts of tokens to be swapped *)
+        let token_amount: token_amounts_to_swap = 
+            match order.order_type with
+            | Buy -> 
+                { to_buy = order.total_token_amount * order.token_amount_to_sell;
+                    to_sell = order.total_token_amount }
+            | Sell -> 
+                { to_buy = order.total_token_amount * order.token_amount_to_buy ; 
+                    to_sell = order.total_token_amount } in
         (* Deducts tokens from buyer's balance to credit seller's balance *)
         let buyer_deducted_ledger = 
-            Big_map.update (buyer, order.token_id_to_buy) (Some (abs (buyer_balance - order.token_amount_to_buy))) ledger in
+            Big_map.update (buyer, order.token_id_to_buy) (Some (abs (buyer_balance - token_amount.to_buy))) ledger in
         let seller_credited_ledger = 
             match Big_map.find_opt (seller, order.token_id_to_buy) buyer_deducted_ledger with
-            | None -> Big_map.add (seller, order.token_id_to_buy) order.token_amount_to_buy buyer_deducted_ledger
+            | None -> Big_map.add (seller, order.token_id_to_buy) token_amount.to_buy buyer_deducted_ledger
             | Some blc ->
-                Big_map.update (seller, order.token_id_to_buy) (Some (blc + order.token_amount_to_buy)) buyer_deducted_ledger in
+                Big_map.update (seller, order.token_id_to_buy) (Some (blc + token_amount.to_buy)) buyer_deducted_ledger in
         (* Deducts tokens from seller's balance to credit buyer's balance *)
         let temp_ledger1 = 
             match Big_map.find_opt (seller, order.token_id_to_sell) seller_credited_ledger with
             | None -> (failwith "NO_SELLER_ACCOUNT_FOUND": ledger)
             | Some blc -> 
-                Big_map.update (seller, order.token_id_to_sell) (Some (abs (blc - order.token_amount_to_sell))) seller_credited_ledger in
+                Big_map.update (seller, order.token_id_to_sell) (Some (abs (blc - token_amount.to_sell))) seller_credited_ledger in
         let temp_ledger2 =
             match Big_map.find_opt (buyer, order.token_id_to_sell) temp_ledger1 with
-            | None -> Big_map.add (buyer, order.token_id_to_sell) order.token_amount_to_sell temp_ledger1
+            | None -> Big_map.add (buyer, order.token_id_to_sell) token_amount.to_sell temp_ledger1
             | Some blc -> 
-                Big_map.update (buyer, order.token_id_to_sell) (Some (blc + order.token_amount_to_sell)) temp_ledger1 in
+                Big_map.update (buyer, order.token_id_to_sell) (Some (blc + token_amount.to_sell)) temp_ledger1 in
         temp_ledger2
     
                 
@@ -1049,8 +1067,13 @@ let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): mul
             match Big_map.find_opt order_id s.order_book with
             | None -> (failwith "ORDER_NOT_FOUND": order_book_entry)
             | Some ord -> ord in
+        (* Calculates total amount of token to be sold *)
+        let total_tokens_to_sell = 
+            match order.order_type with
+            | Buy -> order.total_token_amount * order.token_amount_to_sell
+            | Sell -> order.total_token_amount in
         (* Checks if requested amount is equal or less than available to buy *)
-        if token_amount = order.token_amount_to_sell
+        if token_amount = total_tokens_to_sell
         then
             (* If same amount, verifies if buyer has enough balance *)
             let temp_ledger = swap Tezos.sender order.seller order s.ledger in
@@ -1058,36 +1081,39 @@ let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): mul
             let new_order_book = Big_map.remove order_id s.order_book in
             (* Returns updated storage *)
             { s with ledger = temp_ledger; order_book = new_order_book }
-        else if token_amount < order.token_amount_to_sell
+        else if token_amount < total_tokens_to_sell
         then
-            (* If lesser amount, tokens are swapped and amount is deducted from order *)
-            (* Calculates price per token *)
-            let price_per_token: nat = 
-                match ediv order.token_amount_to_buy order.token_amount_to_sell with
+            (* If lesser amount, calculates how many tokens to buy *)
+            (* matched_tokens = amount of tokens to buy *)
+            let matched_tokens = 
+                match order.order_type with
+                | Buy -> 
+                    let div_result = match ediv total_tokens_to_sell order.token_amount_to_sell with
+                    | None -> (failwith "DIVISION_BY_ZERO": nat)
+                    | Some result -> 
+                        if result.1 = 0n
+                        then result.0
+                        else result.0 + 1n in
+                    div_result
+                | Sell -> token_amount * order.token_amount_to_buy in
+            (* Updates the order to save in order book *)
+            let new_total_token_amount = 
+                match ediv (order.total_token_amount * token_amount) (order.total_token_amount * order.token_amount_to_sell) with
                 | None -> (failwith "DIVISION_BY_ZERO": nat)
                 | Some result -> 
                     if result.1 = 0n
                     then result.0
                     else result.0 + 1n in
-            (* Calculates total token amount by multiplying price per token with requested amount *)
-            let total_token_amount: nat = price_per_token * token_amount in
-            (* Double checks if result is still in the order range *)
-            if total_token_amount <= order.token_amount_to_sell
-            then
-                (* Updates the order to save in order book *)
-                let updated_order: order_book_entry = 
-                    { order with 
-                        token_amount_to_sell = abs (order.token_amount_to_sell - total_token_amount);
-                        token_amount_to_buy = abs (order.token_amount_to_buy - total_token_amount) } in
-                (* Creates temp order to inject in the swap function *)
-                let temp_order: order_book_entry = 
-                    { order with token_amount_to_sell = total_token_amount ; token_amount_to_buy = token_amount } in
-                (* Makes the swap *)
-                let new_ledger = swap Tezos.sender order.seller temp_order s.ledger in
+            let updated_order: order_book_entry = 
+                { order with total_token_amount = new_total_token_amount } in
+            (* Creates temporary order to inject in the swap function *)
+            let temp_order: order_book_entry = 
+                { order with total_token_amount = new_total_token_amount } in
+            (* Makes the swap *)
+            let new_ledger = swap Tezos.sender order.seller temp_order s.ledger in
 
-                { s with ledger = new_ledger; 
-                    order_book = Big_map.update order_id (Some (updated_order)) s.order_book }
-            else (failwith "UNEXPECTED_TOKEN_AMOUNT": multi_token_storage)
+            { s with ledger = new_ledger; 
+                order_book = Big_map.update order_id (Some (updated_order)) s.order_book }
         else
             (failwith "INVALID_AMOUNT": multi_token_storage)
 

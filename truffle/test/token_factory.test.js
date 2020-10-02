@@ -14,7 +14,7 @@ contract("FA2 Fungible Token Factory", () => {
     name: "Alice",
     decimals: 0,
     extras: [["picture", "aliToken.png"]],
-    totalSupply: 21000000
+    totalSupply: 21000
   };
 
   const bobToken = {
@@ -23,7 +23,7 @@ contract("FA2 Fungible Token Factory", () => {
     name: "Bob",
     decimals: 0,
     extras: [["picture", "bobToken.png"]],
-    totalSupply: 2000000
+    totalSupply: 20000
   };
 
   before(async () => {
@@ -197,18 +197,21 @@ contract("FA2 Fungible Token Factory", () => {
     await signerFactory(alice.sk);
 
     const expectedOrderId = parseInt(storage.order_id_counter) + 1;
-    const tokenAmountToSell = 1000;
-    const tokenAmountToBuy = 1000;
+    const tokenAmountToSell = 1;
+    const tokenAmountToBuy = 2;
+    const totalTokenAmount = 1000; // total token to sell
+    const orderType = tokenAmountToSell < tokenAmountToBuy ? "sell" : "buy";
 
     try {
       const op = await fa2_instance.methods
         .new_exchange_order(
-          "buy",
+          orderType,
           [["unit"]],
           aliToken.id,
           tokenAmountToSell,
           bobToken.id,
-          tokenAmountToBuy
+          tokenAmountToBuy,
+          totalTokenAmount
         )
         .send();
       await op.confirmation();
@@ -222,12 +225,13 @@ contract("FA2 Fungible Token Factory", () => {
 
     const order = await storage.order_book.get(expectedOrderId.toString());
 
-    assert.property(order.order_type, "buy");
-    assert.isTrue(typeof order.order_type.buy === "symbol");
+    //assert.property(order.order_type, orderType);
+    //assert.isTrue(typeof order.order_type[orderType] === "symbol");
     assert.equal(order.token_id_to_sell, aliToken.id);
     assert.equal(order.token_amount_to_sell, tokenAmountToSell);
     assert.equal(order.token_id_to_buy, bobToken.id);
     assert.equal(order.token_amount_to_buy, tokenAmountToBuy);
+    assert.equal(order.total_token_amount, totalTokenAmount);
     assert.equal(order.seller, alice.pkh);
   });
 
@@ -256,7 +260,7 @@ contract("FA2 Fungible Token Factory", () => {
 
     try {
       const op = await fa2_instance.methods
-        .buy_from_exchange(storage.order_id_counter, order.token_amount_to_sell)
+        .buy_from_exchange(storage.order_id_counter, order.total_token_amount)
         .send();
       await op.confirmation();
     } catch (error) {
@@ -287,30 +291,40 @@ contract("FA2 Fungible Token Factory", () => {
       1: bobToken.id
     });
 
+    // if sell order
+    const token_amount = {
+      toBuy:
+        order.token_amount_to_buy.toNumber() *
+        order.total_token_amount.toNumber(), //bobToken
+      toSell:
+        order.token_amount_to_sell.toNumber() *
+        order.total_token_amount.toNumber() // aliToken
+    };
+
     // Bob's aliToken balance += Alice's aliToken to sell
     assert.equal(
-      bobAliTokenBalance.toNumber() + order.token_amount_to_sell.toNumber(),
+      bobAliTokenBalance.toNumber() + token_amount.toSell,
       bobAliTokenNewBalance.toNumber()
     );
     // Alice's bobToken balance = Alice's bobToken to buy
     assert.equal(
       (aliceBobTokenBalance ? aliceBobTokenBalance.toNumber() : 0) +
-        order.token_amount_to_buy.toNumber(),
+        token_amount.toBuy,
       aliceBobTokenNewBalance.toNumber()
     );
     // Bob's bobToken balance -= Alice's bobToken to buy
     assert.equal(
-      bobBobTokenBalance.toNumber() - order.token_amount_to_buy.toNumber(),
+      bobBobTokenBalance.toNumber() - token_amount.toBuy,
       bobBobTokenNewBalance.toNumber()
     );
     // Alice's aliToken balance -= Alice's aliToken to sell
     assert.equal(
-      aliceAliTokenBalance.toNumber() - order.token_amount_to_sell.toNumber(),
+      aliceAliTokenBalance.toNumber() - token_amount.toSell,
       aliceAliTokenNewBalance.toNumber()
     );
   });
 
-  it("should mint wTokens for Alice", async () => {
+  /*it("should mint wTokens for Alice", async () => {
     await signerFactory(alice.sk);
 
     const aliceBalance = await Tezos.tz.getBalance(alice.pkh);
@@ -415,25 +429,28 @@ contract("FA2 Fungible Token Factory", () => {
       wrapperNewSupply.toNumber(),
       wrapperSupply.toNumber() - bobBalance.toNumber()
     );
-  });
+  });*/
 
   it("should let Bob create an order", async () => {
     await signerFactory(bob.sk);
     // Bob sells 1000 BobTokens for 1000 AliTokens
 
     const expectedOrderId = parseInt(storage.order_id_counter) + 1;
-    const tokenAmountToSell = 1000;
-    const tokenAmountToBuy = 855;
+    const tokenAmountToSell = 2;
+    const tokenAmountToBuy = 1;
+    const totalTokenAmount = 500; // total token to sell
+    const orderType = tokenAmountToSell < tokenAmountToBuy ? "sell" : "buy";
 
     try {
       const op = await fa2_instance.methods
         .new_exchange_order(
-          "buy",
+          orderType,
           [["unit"]],
           bobToken.id,
           tokenAmountToSell,
           aliToken.id,
-          tokenAmountToBuy
+          tokenAmountToBuy,
+          totalTokenAmount
         )
         .send();
       await op.confirmation();
@@ -447,8 +464,8 @@ contract("FA2 Fungible Token Factory", () => {
 
     const order = await storage.order_book.get(expectedOrderId.toString());
 
-    assert.property(order.order_type, "buy");
-    assert.isTrue(typeof order.order_type.buy === "symbol");
+    //assert.property(order.order_type, "buy");
+    //assert.isTrue(typeof order.order_type.buy === "symbol");
     assert.equal(order.token_id_to_sell, bobToken.id);
     assert.equal(order.token_amount_to_sell, tokenAmountToSell);
     assert.equal(order.token_id_to_buy, aliToken.id);
@@ -478,13 +495,12 @@ contract("FA2 Fungible Token Factory", () => {
     const order = await storage.order_book.get(
       storage.order_id_counter.toString()
     );
+    const tokens_to_buy =
+      (order.total_token_amount * order.token_amount_to_sell.toNumber()) / 2;
 
     try {
       const op = await fa2_instance.methods
-        .buy_from_exchange(
-          storage.order_id_counter,
-          order.token_amount_to_sell / 2
-        )
+        .buy_from_exchange(storage.order_id_counter, tokens_to_buy)
         .send();
       await op.confirmation();
     } catch (error) {
