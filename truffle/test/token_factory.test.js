@@ -534,27 +534,225 @@ contract("FA2 Fungible Token Factory", () => {
       1: bobToken.id
     });
 
-    /*
     // Bob's aliToken balance += Alice's aliToken to sell
     assert.equal(
-      bobAliTokenBalance.toNumber() + order.token_amount_to_sell.toNumber(),
+      bobAliTokenBalance.toNumber() + tokens_to_buy,
       bobAliTokenNewBalance.toNumber()
     );
     // Alice's bobToken balance = Alice's bobToken to buy
     assert.equal(
       (aliceBobTokenBalance ? aliceBobTokenBalance.toNumber() : 0) +
-        order.token_amount_to_buy.toNumber(),
+        order.total_token_amount.toNumber() / 2,
       aliceBobTokenNewBalance.toNumber()
     );
     // Bob's bobToken balance -= Alice's bobToken to buy
     assert.equal(
-      bobBobTokenBalance.toNumber() - order.token_amount_to_buy.toNumber(),
+      bobBobTokenBalance.toNumber() - order.total_token_amount.toNumber() / 2,
       bobBobTokenNewBalance.toNumber()
     );
     // Alice's aliToken balance -= Alice's aliToken to sell
     assert.equal(
-      aliceAliTokenBalance.toNumber() - order.token_amount_to_sell.toNumber(),
+      aliceAliTokenBalance.toNumber() - order.total_token_amount.toNumber(),
       aliceAliTokenNewBalance.toNumber()
-    );*/
+    );
+  });
+
+  it("should create and fulfill orders with random values", async () => {
+    const createOrder = async ({
+      expectedOrderId,
+      orderType,
+      tokenIdToSell,
+      tokenIdToBuy,
+      tokenAmountToSell,
+      tokenAmountToBuy,
+      totalTokenAmount
+    }) => {
+      // saves new order in contract and verifies the values
+      try {
+        const op = await fa2_instance.methods
+          .new_exchange_order(
+            orderType,
+            [["unit"]],
+            tokenIdToSell,
+            tokenAmountToSell,
+            tokenIdToBuy,
+            tokenAmountToBuy,
+            totalTokenAmount
+          )
+          .send();
+        await op.confirmation();
+      } catch (error) {
+        console.log(error);
+        return false;
+      }
+      storage = await fa2_instance.storage();
+
+      assert.equal(expectedOrderId, parseInt(storage.order_id_counter));
+
+      const order = await storage.order_book.get(expectedOrderId.toString());
+
+      //assert.property(order.order_type, "buy");
+      //assert.isTrue(typeof order.order_type.buy === "symbol");
+      assert.equal(order.token_id_to_sell, bobToken.id);
+      assert.equal(order.token_amount_to_sell, tokenAmountToSell);
+      assert.equal(order.token_id_to_buy, aliToken.id);
+      assert.equal(order.token_amount_to_buy, tokenAmountToBuy);
+      assert.equal(order.seller, bob.pkh);
+
+      return true;
+    };
+
+    const fulfilOrder = async (order, amount, tokens_to_buy) => {
+      const bobAliTokenBalance = await storage.ledger.get({
+        0: bob.pkh,
+        1: aliToken.id
+      });
+      const bobBobTokenBalance = await storage.ledger.get({
+        0: bob.pkh,
+        1: bobToken.id
+      });
+      const aliceAliTokenBalance = await storage.ledger.get({
+        0: alice.pkh,
+        1: aliToken.id
+      });
+      const aliceBobTokenBalance = await storage.ledger.get({
+        0: alice.pkh,
+        1: bobToken.id
+      });
+
+      try {
+        const op = await fa2_instance.methods
+          .buy_from_exchange(storage.order_id_counter, tokens_to_buy)
+          .send();
+        await op.confirmation();
+      } catch (error) {
+        console.log(error);
+      }
+
+      storage = await fa2_instance.storage();
+
+      const updatedOrder = await storage.order_book.get(
+        storage.order_id_counter.toString()
+      );
+      assert.notEqual(
+        order.token_amount_to_sell,
+        updatedOrder.token_amount_to_sell
+      );
+
+      const bobAliTokenNewBalance = await storage.ledger.get({
+        0: bob.pkh,
+        1: aliToken.id
+      });
+      const bobBobTokenNewBalance = await storage.ledger.get({
+        0: bob.pkh,
+        1: bobToken.id
+      });
+      const aliceAliTokenNewBalance = await storage.ledger.get({
+        0: alice.pkh,
+        1: aliToken.id
+      });
+      const aliceBobTokenNewBalance = await storage.ledger.get({
+        0: alice.pkh,
+        1: bobToken.id
+      });
+
+      // Bob's aliToken balance += Alice's aliToken to sell
+      assert.equal(
+        bobAliTokenBalance.toNumber() + tokens_to_buy,
+        bobAliTokenNewBalance.toNumber()
+      );
+      // Alice's bobToken balance = Alice's bobToken to buy
+      assert.equal(
+        (aliceBobTokenBalance ? aliceBobTokenBalance.toNumber() : 0) +
+          Math.ceil(order.total_token_amount.toNumber() / amount),
+        aliceBobTokenNewBalance.toNumber()
+      );
+      // Bob's bobToken balance -= Alice's bobToken to buy
+      assert.equal(
+        bobBobTokenBalance.toNumber() -
+          Math.ceil(order.total_token_amount.toNumber() / amount),
+        bobBobTokenNewBalance.toNumber()
+      );
+      // Alice's aliToken balance -= Alice's aliToken to sell
+      assert.equal(
+        aliceAliTokenBalance.toNumber() - tokens_to_buy,
+        aliceAliTokenNewBalance.toNumber()
+      );
+    };
+
+    await signerFactory(bob.sk);
+    // Bob sells 1000 BobTokens for 500 AliTokens
+
+    let expectedOrderId = parseInt(storage.order_id_counter) + 1;
+    let tokenAmountToSell = 2;
+    let tokenAmountToBuy = 1;
+    let totalTokenAmount = 500; // total token to sell
+    let orderType = tokenAmountToSell < tokenAmountToBuy ? "sell" : "buy";
+
+    let newOrder = {
+      expectedOrderId,
+      orderType,
+      tokenIdToSell: bobToken.id,
+      tokenIdToBuy: aliToken.id,
+      tokenAmountToSell,
+      tokenAmountToBuy,
+      totalTokenAmount
+    };
+
+    let orderCreated = await createOrder(newOrder);
+
+    assert.isTrue(orderCreated);
+
+    await signerFactory(alice.sk);
+
+    let order = await storage.order_book.get(
+      storage.order_id_counter.toString()
+    );
+    let fractionOfOrder = 3;
+    let tokens_to_buy = Math.ceil(
+      (order.total_token_amount * order.token_amount_to_sell.toNumber()) /
+        fractionOfOrder
+    );
+
+    await fulfilOrder(order, fractionOfOrder, tokens_to_buy);
+
+    /*
+     * BOB SELLS 0 TO 1000 BOBTOKENS FOR 0 TO 500 ALITOKENS (RANDOM)
+     */
+    await signerFactory(bob.sk);
+    storage = await fa2_instance.storage();
+
+    expectedOrderId = parseInt(storage.order_id_counter) + 1;
+    tokenAmountToSell = Math.ceil(Math.random() * (10 - 1) + 1);
+    tokenAmountToBuy = Math.ceil(Math.random() * (10 - 1) + 1);
+    totalTokenAmount = Math.ceil(Math.random() * (1000 - 1) + 1); // total token to sell
+    orderType = tokenAmountToSell < tokenAmountToBuy ? "sell" : "buy";
+
+    newOrder = {
+      expectedOrderId,
+      orderType,
+      tokenIdToSell: bobToken.id,
+      tokenIdToBuy: aliToken.id,
+      tokenAmountToSell,
+      tokenAmountToBuy,
+      totalTokenAmount
+    };
+
+    orderCreated = await createOrder(newOrder);
+
+    assert.isTrue(orderCreated);
+
+    await signerFactory(alice.sk);
+
+    order = await storage.order_book.get(storage.order_id_counter.toString());
+    fractionOfOrder = Math.ceil(Math.random() * (10 - 1) + 1);
+    tokens_to_buy = Math.ceil(
+      (order.total_token_amount * order.token_amount_to_sell.toNumber()) /
+        fractionOfOrder
+    );
+
+    console.log(order, fractionOfOrder, tokens_to_buy);
+
+    await fulfilOrder(order, fractionOfOrder, tokens_to_buy);
   });
 });

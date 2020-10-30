@@ -1015,6 +1015,16 @@ let set_on_exchange ((params, s): exchange_order_params_michelson * multi_token_
             (* Returns the new storage *)
             { s with order_book = new_order_book; order_id_counter = order_id }
 
+let divide (divisor: nat) (dividend: nat): nat =
+    let return = 
+        match ediv divisor dividend with
+        | None -> (failwith "DIVISION_BY_ZERO": nat)
+        | Some result -> 
+            if result.1 = 0n
+            then result.0
+            else result.0 + 1n in
+    return
+
 let swap (buyer: address) (seller: address) (order: order_book_entry) (ledger: ledger): ledger = 
     let buyer_balance: nat = 
         match Big_map.find_opt (buyer, order.token_id_to_buy) ledger with
@@ -1051,9 +1061,7 @@ let swap (buyer: address) (seller: address) (order: order_book_entry) (ledger: l
             | None -> Big_map.add (buyer, order.token_id_to_sell) token_amount.to_sell temp_ledger1
             | Some blc -> 
                 Big_map.update (buyer, order.token_id_to_sell) (Some (blc + token_amount.to_sell)) temp_ledger1 in
-        temp_ledger2
-    
-                
+        temp_ledger2          
 
 let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): multi_token_storage =
     let order_id = params.0 in
@@ -1088,27 +1096,17 @@ let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): mul
             let matched_tokens = 
                 match order.order_type with
                 | Buy -> 
-                    let div_result = match ediv total_tokens_to_sell order.token_amount_to_sell with
-                    | None -> (failwith "DIVISION_BY_ZERO": nat)
-                    | Some result -> 
-                        if result.1 = 0n
-                        then result.0
-                        else result.0 + 1n in
+                    let div_result = divide total_tokens_to_sell order.token_amount_to_sell in
                     div_result
                 | Sell -> token_amount * order.token_amount_to_buy in
             (* Updates the order to save in order book *)
-            let new_total_token_amount = 
-                match ediv (order.total_token_amount * token_amount) (order.total_token_amount * order.token_amount_to_sell) with
-                | None -> (failwith "DIVISION_BY_ZERO": nat)
-                | Some result -> 
-                    if result.1 = 0n
-                    then result.0
-                    else result.0 + 1n in
+            let fraction_from_token_amount = 
+                divide (order.total_token_amount * token_amount) (order.total_token_amount * order.token_amount_to_sell) in
             let updated_order: order_book_entry = 
-                { order with total_token_amount = new_total_token_amount } in
+                { order with total_token_amount = abs (order.total_token_amount - fraction_from_token_amount) } in
             (* Creates temporary order to inject in the swap function *)
             let temp_order: order_book_entry = 
-                { order with total_token_amount = new_total_token_amount } in
+                { order with total_token_amount = fraction_from_token_amount } in
             (* Makes the swap *)
             let new_ledger = swap Tezos.sender order.seller temp_order s.ledger in
 
