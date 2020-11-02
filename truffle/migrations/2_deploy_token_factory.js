@@ -6,8 +6,8 @@ const wrapperId = 1;
 const ledger = new MichelsonMap();
 ledger.set(
   {
-    0: alice.pkh,
-    1: wrapperId
+    owner: alice.pkh,
+    token_id: wrapperId
   },
   0
 );
@@ -28,8 +28,8 @@ const initialStorage = {
       extras: new MichelsonMap()
     }
   }),
-  order_book: new MichelsonMap(),
-  order_id_counter: 0
+  admin: alice.pkh,
+  exchange_address: alice.pkh
 };
 
 module.exports = async (deployer, _network, accounts) => {

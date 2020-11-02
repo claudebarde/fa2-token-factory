@@ -116,22 +116,29 @@ type order_book_entry = {
   token_amount_to_sell: nat;
   token_id_to_buy: token_id;
   token_amount_to_buy: nat;
-  total_token_amount: nat;
+  total_token_amount: nat; (* total amount of token to sell *)
   seller: address;
 }
 
-type exchange_order_params = {
-  order_type: order_type;
-  token_id_to_sell: token_id;
-  token_amount_to_sell: nat;
-  token_id_to_buy: token_id;
-  token_amount_to_buy: nat;
-  total_token_amount: nat; (* total amount of token to sell *)
+type token_amounts_to_swap = { to_buy: nat; to_sell: nat }
+
+type order_params =
+[@layout:comb]
+{
+    order_id: order_id;
+    amount_to_buy: nat;
+    buyer: address;
 }
 
-type exchange_order_params_michelson = exchange_order_params michelson_pair_right_comb
-
-type token_amounts_to_swap = { to_buy: nat; to_sell: nat }
+type confirm_buy_params = 
+[@layout:comb]
+{
+  order_id: order_id;
+  token_ids: nat * nat; (* sold token id -> bought token id *)
+  status: bool;
+  from_: address * nat; (* user address with amount to debit *)
+  to_: address * nat; (* user address with amount to credit *)
+}
 
 type fa2_entry_points =
   | Transfer of transfer_michelson list
@@ -140,10 +147,12 @@ type fa2_entry_points =
   | Token_metadata_registry of address contract
   | Mint_tokens of mint_tokens_params_michelson
   | Burn_tokens of token_id * nat
-  | New_exchange_order of exchange_order_params_michelson
+  | New_exchange_order of order_book_entry
   | Buy_from_exchange of order_id * nat
+  | Confirm_buy_from_exchange of confirm_buy_params
   | Buy_xtz_wrapper of unit
   | Redeem_xtz_wrapper of nat
+  | Update_exchange_address of address
 
 
 type fa2_token_metadata =
@@ -322,6 +331,15 @@ tools.
 
 
 # 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
+
+
+
+
+
+
+
+
+
 
 
 
@@ -887,8 +905,8 @@ type multi_token_storage = {
   operators : operator_storage;
   token_total_supply : token_total_supply;
   token_metadata : token_metadata_storage;
-  order_book: (nat, order_book_entry) big_map;
-  order_id_counter: nat; // initialized to 0
+  exchange_address: address;
+  admin: address;
 }
 
 
@@ -977,143 +995,81 @@ let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_tok
 
 # 28 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./multi_asset/ligo/src/../fa2/exchange_functions.mligo" 1
-let set_on_exchange ((params, s): exchange_order_params_michelson * multi_token_storage): multi_token_storage =
-    (* Converts parameters *)
-    let exchange_order: exchange_order_params = 
-        Layout.convert_from_right_comb (params: exchange_order_params_michelson) in
-    (* Checks if user has enough tokens to sell *)
-    let user_balance: nat = 
-        match Big_map.find_opt (Tezos.sender, exchange_order.token_id_to_sell) s.ledger with
-        | None -> (failwith "NO_BALANCE_AVAILABLE": nat)
-        | Some blc -> blc in
-    if user_balance < exchange_order.token_amount_to_sell
-    then (failwith "INSUFFICIENT_BALANCE": multi_token_storage)
+# 1 "./multi_asset/ligo/src/../fa2/remote_exchange.mligo" 1
+(* Creates a new order in the remote exchange *)
+let set_on_exchange ((params, s): order_book_entry * multi_token_storage): operation * multi_token_storage = 
+    (* Verifies the user has enough funds *)
+    let token_balance: nat = match Big_map.find_opt (Tezos.sender, params.token_amount_to_sell) s.ledger with
+        | None -> (failwith "NO_ACCOUNT": nat)
+        | Some b -> b in
+    if token_balance < params.total_token_amount
+    then (failwith fa2_insufficient_balance: operation * multi_token_storage)
     else
-        (* Checks if the token to buy exists and if the total supply is sufficient for the buy *)
-        let token_to_buy_total_supply: nat = 
-            match Big_map.find_opt exchange_order.token_id_to_buy s.token_total_supply with
-            | None -> (failwith "NO_TOKEN_FOUND": nat)
-            | Some supply -> supply in
-        if token_to_buy_total_supply < exchange_order.token_amount_to_buy
-        then (failwith "INSUFFICIENT_TOTAL_SUPPLY": multi_token_storage)
-        else
-            (* Creates a new order *)
-            let new_order: order_book_entry = {
-                order_type = exchange_order.order_type;
-                token_id_to_sell = exchange_order.token_id_to_sell;
-                token_amount_to_sell = exchange_order.token_amount_to_sell;
-                token_id_to_buy = exchange_order.token_id_to_buy;
-                token_amount_to_buy = exchange_order.token_amount_to_buy;
-                total_token_amount = exchange_order.total_token_amount;
-                seller = Tezos.sender;
-            } in 
-            (* Creates a new order id *)
-            let order_id: nat = s.order_id_counter + 1n in
-            (* Places the new order *)
-            let new_order_book = Big_map.add order_id new_order s.order_book in
-            (* Returns the new storage *)
-            { s with order_book = new_order_book; order_id_counter = order_id }
+        (* Creates call to the exchange contract *)
+        let contract: order_book_entry contract = 
+            match ((Tezos.get_entrypoint_opt "%create_new_order" s.exchange_address): order_book_entry contract option) with
+                | None -> (failwith "UNKNOWN_CONTRACT": order_book_entry contract)
+                | Some c -> c in
+        (* Creates the new transaction *)
+        let op = Tezos.transaction params 0mutez contract in
 
-let divide (divisor: nat) (dividend: nat): nat =
-    let return = 
-        match ediv divisor dividend with
-        | None -> (failwith "DIVISION_BY_ZERO": nat)
-        | Some result -> 
-            if result.1 = 0n
-            then result.0
-            else result.0 + 1n in
-    return
+        op, s
 
-let swap (buyer: address) (seller: address) (order: order_book_entry) (ledger: ledger): ledger = 
-    let buyer_balance: nat = 
-        match Big_map.find_opt (buyer, order.token_id_to_buy) ledger with
-        | None -> (failwith "NO_BALANCE": nat)
-        | Some blc -> blc in
-    if buyer_balance < order.token_amount_to_buy * order.total_token_amount
-    then (failwith "INSUFFICIENT_TOKEN_BALANCE": ledger)
+(* Fulfill an order from the remote exchange *)
+let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): operation = 
+    (* Prepares operation to be sent to the exchange *)
+    let contract: order_params contract = 
+        match ((Tezos.get_entrypoint_opt "%fulfill_order" s.exchange_address): order_params contract option) with
+            | None -> (failwith "UNKNOWN_CONTRACT": order_params contract)
+            | Some c -> c in
+    (* Creates the new transaction *)
+    let buy_order: order_params = {
+        order_id = params.0;
+        amount_to_buy = params.1;
+        buyer = Tezos.sender;
+    } in
+
+    Tezos.transaction buy_order 0mutez contract
+
+(* Receives confirmation of the order fulfilment from the remote exchange *)
+let confirm_buy_from_exchange ((params, s): confirm_buy_params * multi_token_storage): multi_token_storage = 
+    (* Verifies the transaction comes from the exchange *)
+    if Tezos.sender <> s.exchange_address
+    then (failwith fa2_tx_denied: multi_token_storage)
     else
-        (* Calculates amounts of tokens to be swapped *)
-        let token_amount: token_amounts_to_swap = 
-            match order.order_type with
-            | Buy -> 
-                { to_buy = order.total_token_amount * order.token_amount_to_sell;
-                    to_sell = order.total_token_amount }
-            | Sell -> 
-                { to_buy = order.total_token_amount * order.token_amount_to_buy ; 
-                    to_sell = order.total_token_amount } in
-        (* Deducts tokens from buyer's balance to credit seller's balance *)
-        let buyer_deducted_ledger = 
-            Big_map.update (buyer, order.token_id_to_buy) (Some (abs (buyer_balance - token_amount.to_buy))) ledger in
-        let seller_credited_ledger = 
-            match Big_map.find_opt (seller, order.token_id_to_buy) buyer_deducted_ledger with
-            | None -> Big_map.add (seller, order.token_id_to_buy) token_amount.to_buy buyer_deducted_ledger
-            | Some blc ->
-                Big_map.update (seller, order.token_id_to_buy) (Some (blc + token_amount.to_buy)) buyer_deducted_ledger in
-        (* Deducts tokens from seller's balance to credit buyer's balance *)
-        let temp_ledger1 = 
-            match Big_map.find_opt (seller, order.token_id_to_sell) seller_credited_ledger with
-            | None -> (failwith "NO_SELLER_ACCOUNT_FOUND": ledger)
-            | Some blc -> 
-                Big_map.update (seller, order.token_id_to_sell) (Some (abs (blc - token_amount.to_sell))) seller_credited_ledger in
-        let temp_ledger2 =
-            match Big_map.find_opt (buyer, order.token_id_to_sell) temp_ledger1 with
-            | None -> Big_map.add (buyer, order.token_id_to_sell) token_amount.to_sell temp_ledger1
-            | Some blc -> 
-                Big_map.update (buyer, order.token_id_to_sell) (Some (blc + token_amount.to_sell)) temp_ledger1 in
-        temp_ledger2          
-
-let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): multi_token_storage =
-    let order_id = params.0 in
-    let token_amount = params.1 in // amount of token to buy
-    (* Checks if order_id is valid *)
-    if not Big_map.mem order_id s.order_book
-    then (failwith "INVALID_ORDER_ID": multi_token_storage)
-    else 
-        (* Loads the order *)
-        let order: order_book_entry = 
-            match Big_map.find_opt order_id s.order_book with
-            | None -> (failwith "ORDER_NOT_FOUND": order_book_entry)
-            | Some ord -> ord in
-        (* Calculates total amount of token to be sold *)
-        let total_tokens_to_sell = 
-            match order.order_type with
-            | Buy -> order.total_token_amount * order.token_amount_to_sell
-            | Sell -> order.total_token_amount in
-        (* Checks if requested amount is equal or less than available to buy *)
-        if token_amount = total_tokens_to_sell
-        then
-            (* If same amount, verifies if buyer has enough balance *)
-            let temp_ledger = swap Tezos.sender order.seller order s.ledger in
-            (* Deletes the order *)
-            let new_order_book = Big_map.remove order_id s.order_book in
-            (* Returns updated storage *)
-            { s with ledger = temp_ledger; order_book = new_order_book }
-        else if token_amount < total_tokens_to_sell
-        then
-            (* If lesser amount, calculates how many tokens to buy *)
-            (* matched_tokens = amount of tokens to buy *)
-            let matched_tokens = 
-                match order.order_type with
-                | Buy -> 
-                    let div_result = divide total_tokens_to_sell order.token_amount_to_sell in
-                    div_result
-                | Sell -> token_amount * order.token_amount_to_buy in
-            (* Updates the order to save in order book *)
-            let fraction_from_token_amount = 
-                divide (order.total_token_amount * token_amount) (order.total_token_amount * order.token_amount_to_sell) in
-            let updated_order: order_book_entry = 
-                { order with total_token_amount = abs (order.total_token_amount - fraction_from_token_amount) } in
-            (* Creates temporary order to inject in the swap function *)
-            let temp_order: order_book_entry = 
-                { order with total_token_amount = fraction_from_token_amount } in
-            (* Makes the swap *)
-            let new_ledger = swap Tezos.sender order.seller temp_order s.ledger in
-
-            { s with ledger = new_ledger; 
-                order_book = Big_map.update order_id (Some (updated_order)) s.order_book }
+        (* Checks buyer has enough funds *)
+        let buyer_balance: nat =
+            match Big_map.find_opt (params.to_.0, params.token_ids.1) s.ledger with
+            | None -> (failwith fa2_insufficient_balance: nat)
+            | Some b -> b in
+        if buyer_balance < params.to_.1
+        then (failwith "BUYER_INSUFFICIENT_BALANCE": multi_token_storage)
         else
-            (failwith "INVALID_AMOUNT": multi_token_storage)
+            (* Checks seller has enough funds *)
+            let seller_balance: nat = 
+                match Big_map.find_opt (params.from_.0, params.token_ids.0) s.ledger with
+                | None -> (failwith fa2_insufficient_balance: nat)
+                | Some b -> b in
+            if seller_balance < params.from_.1
+            then (failwith "SELLER_INSUFFICIENT_BALANCE": multi_token_storage)
+            else
+                (* Proceeds with the exchange of tokens *)
+                let buyer_new_balance: nat = buyer_balance + params.to_.1 in
+                let seller_new_balance: nat = abs (seller_balance - params.from_.1) in
+                (* Updates buyer balance in storage *)
+                let new_ledger1 = 
+                    Big_map.update (params.to_.0, params.token_ids.1) (Some buyer_new_balance) s.ledger in
+                (* Updates seller balance in storage *)
+                let new_ledger2 = 
+                    Big_map.update (params.from_.0, params.token_ids.0) (Some seller_new_balance) new_ledger1 in
+
+                { s with ledger = new_ledger2 }
+
+(* Updates exchange address *)
+let update_exchange_address (new_address, s: address * multi_token_storage): multi_token_storage =
+    if Tezos.sender = s.admin
+    then { s with exchange_address = new_address }
+    else (failwith "UNAUTHORIZED_ACTION": multi_token_storage)
 
 let buy_xtz_wrapper (s: multi_token_storage): multi_token_storage =
     (* This function wraps XTZ into an FA2 tokens users can use on the platform *)
@@ -1270,11 +1226,15 @@ let main (param, storage : fa2_entry_points * multi_token_storage)
     ([] : operation list), new_storage
 
   | New_exchange_order params ->
-    let new_storage = set_on_exchange (params, storage) in
-    ([] : operation list), new_storage 
+    let result = set_on_exchange (params, storage) in
+    [result.0], result.1 
 
   | Buy_from_exchange params ->
-    let new_storage = buy_from_exchange (params, storage) in
+    let op = buy_from_exchange (params, storage) in
+    [op], storage
+
+  | Confirm_buy_from_exchange params ->
+    let new_storage = confirm_buy_from_exchange (params, storage) in
     ([] : operation list), new_storage 
 
   | Buy_xtz_wrapper params ->
@@ -1282,7 +1242,13 @@ let main (param, storage : fa2_entry_points * multi_token_storage)
     ([]: operation list), new_storage
 
   | Redeem_xtz_wrapper params ->
-    let (op, new_storage) = redeem_xtz_wrapper (params, storage) in
+    let result = redeem_xtz_wrapper (params, storage) in
+    let op = result.0 in
+    let new_storage = result.1 in
     [op], new_storage
+
+  | Update_exchange_address param ->
+    let new_storage = update_exchange_address (param, storage) in
+    ([]: operation list), new_storage
 
 
