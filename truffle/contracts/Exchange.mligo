@@ -1,14 +1,18 @@
 type order_id = nat
 type token_id = nat
 
+type order_type = Buy | Sell
+
 type order_book_entry = 
 [@layout:comb]
 { 
-    token_id_to_sell: token_id;
-    token_amount_to_sell: nat;
-    token_id_to_buy: token_id;
-    token_amount_to_buy: nat;
-    seller: address;
+  order_type: order_type;
+  token_id_to_sell: token_id;
+  token_amount_to_sell: nat;
+  token_id_to_buy: token_id;
+  token_amount_to_buy: nat;
+  total_token_amount: nat; (* total amount of token to sell *)
+  seller: address;
 }
 
 type storage =
@@ -58,7 +62,9 @@ let create_new_order (new_order, s: order_book_entry * storage): return =
     let new_order_id = s.last_order_id + 1n in
 
     ([]: operation list), 
-    { s with order_book = Big_map.add new_order_id new_order s.order_book; last_order_id = new_order_id }
+    { s with 
+        order_book = Big_map.add new_order_id new_order s.order_book; 
+        last_order_id = new_order_id }
 
 (* Fulfills an existing order *)
 let fulfill_order (params, s: order_params * storage): return = 
@@ -107,7 +113,7 @@ let update_ledger_address (new_address, s: address * storage): return =
 
 let main (entrypoints, s: entrypoints * storage): return =
     (* This contract only accepts calls from the main ledger contract or the admin *)
-    if Tezos.sender <> s.ledger_address || Tezos.sender <> s.admin
+    if Tezos.sender <> s.ledger_address && Tezos.sender <> s.admin
     then (failwith "UNAUTHORIZED_SENDER": return)
     else
         let result = match entrypoints with

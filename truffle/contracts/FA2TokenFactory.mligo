@@ -110,7 +110,9 @@ type mint_tokens_params_michelson = mint_tokens_params michelson_pair_right_comb
 
 type order_type = Buy | Sell
 
-type order_book_entry = { 
+type order_book_entry = 
+[@layout:comb]
+{ 
   order_type: order_type;
   token_id_to_sell: token_id;
   token_amount_to_sell: nat;
@@ -331,6 +333,8 @@ tools.
 
 
 # 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
+
+
 
 
 

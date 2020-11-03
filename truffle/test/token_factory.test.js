@@ -3,10 +3,7 @@ const { alice, bob } = require("../scripts/sandbox/accounts");
 const setup = require("./setup");
 
 contract("FA2 Fungible Token Factory", () => {
-  let storage;
-  let fa2_address;
-  let fa2_instance;
-  let signerFactory;
+  let storage, fa2_address, exchange_address, exchange_instance, signerFactory;
 
   const aliToken = {
     id: 2,
@@ -32,11 +29,29 @@ contract("FA2 Fungible Token Factory", () => {
     fa2_address = config.fa2_address;
     fa2_instance = config.fa2_instance;
     signerFactory = config.signerFactory;
+    exchange_address = config.exchange_address;
+    exchange_instance = config.exchange_instance;
     Tezos.setRpcProvider("http://localhost:8732");
+
+    try {
+      console.log("Updating main address and exchange address in contracts...");
+      // updates exchange address in main contract
+      const op1 = await fa2_instance.methods
+        .update_exchange_address(exchange_address)
+        .send();
+      await op1.confirmation();
+      // updates main contract address in exchange contract
+      const op2 = await exchange_instance.methods
+        .update_ledger_address(fa2_address)
+        .send();
+      await op2.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
   });
 
-  it("should show initial counter at 0", () => {
-    assert.equal(storage.order_id_counter, 0);
+  it("Alice should be the admin", () => {
+    assert.equal(storage.admin, alice.pkh);
   });
 
   it("should have wToken initialized with ID 1 and 0 total supply", async () => {
@@ -66,8 +81,8 @@ contract("FA2 Fungible Token Factory", () => {
     storage = await fa2_instance.storage();
 
     const aliceBalance = await storage.ledger.get({
-      0: alice.pkh,
-      1: aliToken.id
+      owner: alice.pkh,
+      token_id: aliToken.id
     });
     assert.equal(aliceBalance.toNumber(), aliToken.totalSupply);
 
@@ -135,8 +150,8 @@ contract("FA2 Fungible Token Factory", () => {
     storage = await fa2_instance.storage();
 
     const bobBalance = await storage.ledger.get({
-      0: bob.pkh,
-      1: aliToken.id
+      owner: bob.pkh,
+      token_id: aliToken.id
     });
 
     assert.equal(bobBalance.toNumber(), tokenAmount);
@@ -186,13 +201,168 @@ contract("FA2 Fungible Token Factory", () => {
     storage = await fa2_instance.storage();
 
     const bobBalance = await storage.ledger.get({
-      0: bob.pkh,
-      1: bobToken.id
+      owner: bob.pkh,
+      token_id: bobToken.id
     });
     assert.equal(bobBalance.toNumber(), bobToken.totalSupply);
   });
 
+  it("should mint wTokens for Alice", async () => {
+    await signerFactory(alice.sk);
+
+    const aliceBalance = await Tezos.tz.getBalance(alice.pkh);
+    const contractBalance = await Tezos.tz.getBalance(fa2_address);
+    const amount = 10;
+
+    try {
+      const op = await fa2_instance.methods
+        .buy_xtz_wrapper([["unit"]])
+        .send({ amount: amount * 10 ** 6, mutez: true });
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+    // checks if XTZ has been deducted from Alice's balance
+    const aliceNewBalance = await Tezos.tz.getBalance(alice.pkh);
+    assert.isBelow(
+      aliceNewBalance.toNumber(),
+      aliceBalance.toNumber() - amount * 10 ** 6
+    );
+    // checks if contract balance has been increased
+    const contractNewBalance = await Tezos.tz.getBalance(fa2_address);
+    assert.equal(
+      contractNewBalance.toNumber(),
+      contractBalance.toNumber() + amount * 10 ** 6
+    );
+    // checks Alice's token balance
+    storage = await fa2_instance.storage();
+    const tokenBalance = await storage.ledger.get({
+      owner: alice.pkh,
+      token_id: 1
+    });
+    assert.equal(amount * 10 ** 6, tokenBalance.toNumber());
+  });
+
+  it("should transfer half of Alice's wToken balance to Bob", async () => {
+    const aliceBalance = await storage.ledger.get({
+      owner: alice.pkh,
+      token_id: 1
+    });
+
+    try {
+      const op = await fa2_instance.methods
+        .transfer([
+          {
+            from_: alice.pkh,
+            txs: [
+              { to_: bob.pkh, token_id: 1, amount: aliceBalance.toNumber() / 2 }
+            ]
+          }
+        ])
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    storage = await fa2_instance.storage();
+
+    const bobBalance = await storage.ledger.get({
+      owner: bob.pkh,
+      token_id: 1
+    });
+
+    assert.equal(bobBalance.toNumber(), aliceBalance.toNumber() / 2);
+  });
+
+  it("should let Bob redeem his wTokens", async () => {
+    await signerFactory(bob.sk);
+
+    const bobBalance = await storage.ledger.get({
+      owner: bob.pkh,
+      token_id: 1
+    });
+    const contractBalance = await Tezos.tz.getBalance(fa2_address);
+    const wrapperSupply = await storage.token_total_supply.get("1");
+
+    try {
+      const op = await fa2_instance.methods
+        .redeem_xtz_wrapper(bobBalance.toNumber())
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    storage = await fa2_instance.storage();
+
+    const bobNewBalance = await storage.ledger.get({
+      owner: bob.pkh,
+      token_id: 1
+    });
+    const contractNewBalance = await Tezos.tz.getBalance(fa2_address);
+    const wrapperNewSupply = await storage.token_total_supply.get("1");
+
+    assert.equal(bobNewBalance.toNumber(), 0);
+    assert.equal(
+      contractNewBalance.toNumber(),
+      contractBalance.toNumber() - bobBalance.toNumber()
+    );
+    assert.equal(
+      wrapperNewSupply.toNumber(),
+      wrapperSupply.toNumber() - bobBalance.toNumber()
+    );
+  });
+
   it("should let Alice create an order", async () => {
+    // Alice sells 1000 AliTokens for 1000 BobTokens
+    await signerFactory(alice.sk);
+
+    const exchangeStorage = await exchange_instance.storage();
+    const expectedOrderId = parseInt(exchangeStorage.last_order_id) + 1;
+    const tokenAmountToSell = 1;
+    const tokenAmountToBuy = 2;
+    const totalTokenAmount = 1000; // total token to sell
+    const orderType = "sell";
+
+    try {
+      const op = await fa2_instance.methods
+        .new_exchange_order(
+          orderType,
+          [["unit"]],
+          aliToken.id,
+          tokenAmountToSell,
+          bobToken.id,
+          tokenAmountToBuy,
+          totalTokenAmount,
+          alice.pkh
+        )
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    const newExchangeStorage = await exchange_instance.storage();
+    const orderId = newExchangeStorage.last_order_id.toNumber();
+
+    assert.equal(orderId, expectedOrderId);
+
+    const newOrder = await newExchangeStorage.order_book.get(
+      orderId.toString()
+    );
+    //console.log("new order:", newOrder);
+
+    //assert.equal(newOrder.order_type, orderType);
+    assert.equal(newOrder.token_id_to_sell, aliToken.id);
+    assert.equal(newOrder.token_amount_to_sell, tokenAmountToSell);
+    assert.equal(newOrder.token_id_to_buy, bobToken.id);
+    assert.equal(newOrder.token_amount_to_buy, tokenAmountToBuy);
+    assert.equal(newOrder.total_token_amount, totalTokenAmount);
+    assert.equal(newOrder.seller, alice.pkh);
+  });
+
+  /*it("should let Alice create an order", async () => {
     // Alice sells 1000 AliTokens for 1000 BobTokens
     await signerFactory(alice.sk);
 
@@ -323,113 +493,6 @@ contract("FA2 Fungible Token Factory", () => {
       aliceAliTokenNewBalance.toNumber()
     );
   });
-
-  /*it("should mint wTokens for Alice", async () => {
-    await signerFactory(alice.sk);
-
-    const aliceBalance = await Tezos.tz.getBalance(alice.pkh);
-    const contractBalance = await Tezos.tz.getBalance(fa2_address);
-    const amount = 10;
-
-    try {
-      const op = await fa2_instance.methods
-        .buy_xtz_wrapper([["unit"]])
-        .send({ amount: amount * 10 ** 6, mutez: true });
-      await op.confirmation();
-    } catch (error) {
-      console.log(error);
-    }
-    // checks if XTZ has been deducted from Alice's balance
-    const aliceNewBalance = await Tezos.tz.getBalance(alice.pkh);
-    assert.isBelow(
-      aliceNewBalance.toNumber(),
-      aliceBalance.toNumber() - amount * 10 ** 6
-    );
-    // checks if contract balance has been increased
-    const contractNewBalance = await Tezos.tz.getBalance(fa2_address);
-    assert.equal(
-      contractNewBalance.toNumber(),
-      contractBalance.toNumber() + amount * 10 ** 6
-    );
-    // checks Alice's token balance
-    storage = await fa2_instance.storage();
-    const tokenBalance = await storage.ledger.get({
-      0: alice.pkh,
-      1: 1
-    });
-    assert.equal(amount * 10 ** 6, tokenBalance.toNumber());
-  });
-
-  it("should transfer half of Alice's wToken balance to Bob", async () => {
-    const aliceBalance = await storage.ledger.get({
-      0: alice.pkh,
-      1: 1
-    });
-
-    try {
-      const op = await fa2_instance.methods
-        .transfer([
-          {
-            from_: alice.pkh,
-            txs: [
-              { to_: bob.pkh, token_id: 1, amount: aliceBalance.toNumber() / 2 }
-            ]
-          }
-        ])
-        .send();
-      await op.confirmation();
-    } catch (error) {
-      console.log(error);
-    }
-
-    storage = await fa2_instance.storage();
-
-    const bobBalance = await storage.ledger.get({
-      0: bob.pkh,
-      1: 1
-    });
-
-    assert.equal(bobBalance.toNumber(), aliceBalance.toNumber() / 2);
-  });
-
-  it("should let Bob redeem his wTokens", async () => {
-    await signerFactory(bob.sk);
-
-    const bobBalance = await storage.ledger.get({
-      0: bob.pkh,
-      1: 1
-    });
-    const contractBalance = await Tezos.tz.getBalance(fa2_address);
-    const wrapperSupply = await storage.token_total_supply.get("1");
-
-    try {
-      const op = await fa2_instance.methods
-        .redeem_xtz_wrapper(bobBalance.toNumber())
-        .send();
-      await op.confirmation();
-    } catch (error) {
-      console.log(error);
-    }
-
-    storage = await fa2_instance.storage();
-
-    const bobNewBalance = await storage.ledger.get({
-      0: bob.pkh,
-      1: 1
-    });
-    const contractNewBalance = await Tezos.tz.getBalance(fa2_address);
-    const wrapperNewSupply = await storage.token_total_supply.get("1");
-
-    assert.equal(bobNewBalance.toNumber(), 0);
-    assert.equal(
-      contractNewBalance.toNumber(),
-      contractBalance.toNumber() - bobBalance.toNumber()
-    );
-    assert.equal(
-      wrapperNewSupply.toNumber(),
-      wrapperSupply.toNumber() - bobBalance.toNumber()
-    );
-  });*/
 
   it("should let Bob create an order", async () => {
     await signerFactory(bob.sk);
@@ -716,9 +779,8 @@ contract("FA2 Fungible Token Factory", () => {
 
     await fulfilOrder(order, fractionOfOrder, tokens_to_buy);
 
-    /*
-     * BOB SELLS 0 TO 1000 BOBTOKENS FOR 0 TO 500 ALITOKENS (RANDOM)
-     */
+    // BOB SELLS 0 TO 1000 BOBTOKENS FOR 0 TO 500 ALITOKENS (RANDOM)
+
     await signerFactory(bob.sk);
     storage = await fa2_instance.storage();
 
@@ -754,5 +816,5 @@ contract("FA2 Fungible Token Factory", () => {
     console.log(order, fractionOfOrder, tokens_to_buy);
 
     await fulfilOrder(order, fractionOfOrder, tokens_to_buy);
-  });
+  });*/
 });

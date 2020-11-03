@@ -1,9 +1,10 @@
 const CONTRACT = artifacts.require("FA2TokenFactory");
+const EXCHANGE = artifacts.require("Exchange");
 const { Tezos } = require("@taquito/taquito");
 const { InMemorySigner } = require("@taquito/signer");
 const { alice } = require("../scripts/sandbox/accounts");
 
-let storage, fa2_address, fa2_instance;
+let storage, fa2_address, fa2_instance, exchange_address, exchange_instance;
 
 const signerFactory = async pk => {
   await Tezos.setProvider({ signer: new InMemorySigner(pk) });
@@ -24,10 +25,18 @@ module.exports = async () => {
   fa2_instance = await Tezos.contract.at(fa2_instance.address);
   storage = await fa2_instance.storage();
 
+  // deploys the exchange contract
+  exchange_instance = await EXCHANGE.deployed();
+  console.log("Exchange deployed at:", exchange_instance.address);
+  exchange_address = exchange_instance.address;
+  exchange_instance = await Tezos.contract.at(exchange_instance.address);
+
   return {
     storage,
     fa2_address,
     fa2_instance,
+    exchange_address,
+    exchange_instance,
     signerFactory
   };
 };
