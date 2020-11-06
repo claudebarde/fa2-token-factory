@@ -362,6 +362,112 @@ contract("FA2 Fungible Token Factory", () => {
     assert.equal(newOrder.seller, alice.pkh);
   });
 
+  it("should prevent Bob from fulfilling half of Alice's order", async () => {
+    await signerFactory(bob.sk);
+    let err;
+
+    const exchangeStorage = await exchange_instance.storage();
+    const orderId = await exchangeStorage.last_order_id.toNumber();
+    const order = await exchangeStorage.order_book.get(orderId.toString());
+    const amountToBuy =
+      (order.token_amount_to_sell.toNumber() *
+        order.total_token_amount.toNumber()) /
+      2;
+
+    try {
+      const op = await fa2_instance.methods
+        .buy_from_exchange(orderId, amountToBuy)
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      err = error.message;
+    }
+
+    assert.equal(err, "WRONG_AMOUNT");
+  });
+
+  it("should let Bob fulfil Alice's order", async () => {
+    // information from the exchange
+    const exchangeStorage = await exchange_instance.storage();
+    const orderId = await exchangeStorage.last_order_id.toNumber();
+    const order = await exchangeStorage.order_book.get(orderId.toString());
+    const amountToBuy = order.total_token_amount.toNumber();
+    // information from the ledger
+    const aliceBalanceTokenToSell = (
+      await storage.ledger.get({
+        owner: alice.pkh,
+        token_id: order.token_id_to_sell
+      })
+    ).toNumber();
+    let aliceBalanceTokenToBuy = await storage.ledger.get({
+      owner: alice.pkh,
+      token_id: order.token_id_to_buy
+    });
+    aliceBalanceTokenToBuy = aliceBalanceTokenToBuy
+      ? aliceBalanceTokenToBuy.toNumber()
+      : 0;
+    let bobBalanceTokenToSell = await storage.ledger.get({
+      owner: bob.pkh,
+      token_id: order.token_id_to_sell
+    });
+    bobBalanceTokenToSell = bobBalanceTokenToSell
+      ? bobBalanceTokenToSell.toNumber()
+      : 0;
+    const bobBalanceTokenToBuy = (
+      await storage.ledger.get({
+        owner: bob.pkh,
+        token_id: order.token_id_to_buy
+      })
+    ).toNumber();
+
+    try {
+      const op = await fa2_instance.methods
+        .buy_from_exchange(orderId, amountToBuy)
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    // verifies order has been removed in exchange contract
+    const removedOrder = await exchangeStorage.order_book.get(
+      orderId.toString()
+    );
+    assert.isUndefined(removedOrder);
+    // new information from the ledger
+    const aliceNewBalanceTokenToSell = (
+      await storage.ledger.get({
+        owner: alice.pkh,
+        token_id: order.token_id_to_sell
+      })
+    ).toNumber();
+    const aliceNewBalanceTokenToBuy = (
+      await storage.ledger.get({
+        owner: alice.pkh,
+        token_id: order.token_id_to_buy
+      })
+    ).toNumber();
+    const bobNewBalanceTokenToSell = (
+      await storage.ledger.get({
+        owner: bob.pkh,
+        token_id: order.token_id_to_sell
+      })
+    ).toNumber();
+    const bobNewBalanceTokenToBuy = (
+      await storage.ledger.get({
+        owner: bob.pkh,
+        token_id: order.token_id_to_buy
+      })
+    ).toNumber();
+    // verifies swap of tokens happened in the ledger
+    assert.equal(
+      aliceNewBalanceTokenToSell,
+      aliceBalanceTokenToSell -
+        order.total_token_amount.toNumber() *
+          order.token_amount_to_sell.toNumber()
+    );
+  });
+
   /*it("should let Alice create an order", async () => {
     // Alice sells 1000 AliTokens for 1000 BobTokens
     await signerFactory(alice.sk);

@@ -1040,34 +1040,50 @@ let confirm_buy_from_exchange ((params, s): confirm_buy_params * multi_token_sto
     (* Verifies the transaction comes from the exchange *)
     if Tezos.sender <> s.exchange_address
     then (failwith fa2_tx_denied: multi_token_storage)
+    else if params.status = false
+    then (failwith "UNCONFIRMED_EXCHANGE": multi_token_storage)
     else
         (* Checks buyer has enough funds *)
-        let buyer_balance: nat =
+        let buyer_balance_tkB: nat =
             match Big_map.find_opt (params.to_.0, params.token_ids.1) s.ledger with
             | None -> (failwith fa2_insufficient_balance: nat)
             | Some b -> b in
-        if buyer_balance < params.to_.1
+        if buyer_balance_tkB < params.to_.1
         then (failwith "BUYER_INSUFFICIENT_BALANCE": multi_token_storage)
         else
             (* Checks seller has enough funds *)
-            let seller_balance: nat = 
+            let seller_balance_tkA: nat = 
                 match Big_map.find_opt (params.from_.0, params.token_ids.0) s.ledger with
                 | None -> (failwith fa2_insufficient_balance: nat)
                 | Some b -> b in
-            if seller_balance < params.from_.1
+            if seller_balance_tkA < params.from_.1
             then (failwith "SELLER_INSUFFICIENT_BALANCE": multi_token_storage)
             else
                 (* Proceeds with the exchange of tokens *)
-                let buyer_new_balance: nat = buyer_balance + params.to_.1 in
-                let seller_new_balance: nat = abs (seller_balance - params.from_.1) in
-                (* Updates buyer balance in storage *)
+                (* Buyer *)
+                let buyer_new_balance_tkA: nat = 
+                    match Big_map.find_opt (params.to_.0, params.token_ids.0) s.ledger with
+                    | None -> 0n
+                    | Some b -> b + params.to_.1 in
+                let buyer_new_balance_tkB: nat = abs (buyer_balance_tkB - params.from_.1) in
+                (* Seller *)
+                let seller_new_balance_tkA: nat = abs (seller_balance_tkA - params.from_.1) in
+                let seller_new_balance_tkB: nat = 
+                    match Big_map.find_opt (params.from_.0, params.token_ids.1) s.ledger with
+                    | None -> 0n
+                    | Some b -> b + params.to_.1 in
+                (* Updates buyer balances in storage *)
                 let new_ledger1 = 
-                    Big_map.update (params.to_.0, params.token_ids.1) (Some buyer_new_balance) s.ledger in
-                (* Updates seller balance in storage *)
+                    Big_map.update (params.to_.0, params.token_ids.0) (Some buyer_new_balance_tkA) s.ledger in
                 let new_ledger2 = 
-                    Big_map.update (params.from_.0, params.token_ids.0) (Some seller_new_balance) new_ledger1 in
+                    Big_map.update (params.to_.0, params.token_ids.1) (Some buyer_new_balance_tkB) new_ledger1 in
+                (* Updates seller balances in storage *)
+                let new_ledger3 = 
+                    Big_map.update (params.from_.0, params.token_ids.0) (Some seller_new_balance_tkA) new_ledger2 in
+                let new_ledger4 = 
+                    Big_map.update (params.from_.0, params.token_ids.1) (Some seller_new_balance_tkB) new_ledger3 in
 
-                { s with ledger = new_ledger2 }
+                { s with ledger = new_ledger4 }
 
 (* Updates exchange address *)
 let update_exchange_address (new_address, s: address * multi_token_storage): multi_token_storage =

@@ -72,7 +72,7 @@ let fulfill_order (params, s: order_params * storage): return =
     let order: order_book_entry = match Big_map.find_opt params.order_id s.order_book with
         | None -> (failwith "UNKNOWN_ORDER_ID": order_book_entry)
         | Some o -> o in
-    if params.amount_to_buy <> order.token_amount_to_sell
+    if params.amount_to_buy <> order.token_amount_to_sell * order.total_token_amount
     then (failwith "WRONG_AMOUNT": return)
     else
         (* Prepares parameters to be sent back to the contract *)
@@ -85,8 +85,8 @@ let fulfill_order (params, s: order_params * storage): return =
             order_id = params.order_id;
             token_ids = order.token_id_to_sell, order.token_id_to_buy;
             status = true;
-            from_ = order.seller, order.token_amount_to_sell;
-            to_ = params.buyer, order.token_amount_to_buy;
+            from_ = order.seller, order.token_amount_to_sell * order.total_token_amount;
+            to_ = params.buyer, order.token_amount_to_buy * order.total_token_amount;
         } in
         let op = Tezos.transaction confirm_params 0mutez contract in
         (* Returns new operation and remove order from order book *)
