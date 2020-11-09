@@ -139,7 +139,7 @@ type confirm_buy_params =
   token_ids: nat * nat; (* sold token id -> bought token id *)
   status: bool;
   from_: address * nat; (* user address with amount to debit *)
-  to_: address * nat; (* user address with amount to credit *)
+  to_: address * nat; (* user address with amount to debit *)
 }
 
 type fa2_entry_points =
@@ -1060,28 +1060,32 @@ let confirm_buy_from_exchange ((params, s): confirm_buy_params * multi_token_sto
             then (failwith "SELLER_INSUFFICIENT_BALANCE": multi_token_storage)
             else
                 (* Proceeds with the exchange of tokens *)
+                let seller_address = params.from_.0 in
+                let seller_to_debit = params.from_.1 in
+                let buyer_address = params.to_.0 in
+                let buyer_to_debit = params.to_.1 in
                 (* Buyer *)
                 let buyer_new_balance_tkA: nat = 
-                    match Big_map.find_opt (params.to_.0, params.token_ids.0) s.ledger with
-                    | None -> 0n
-                    | Some b -> b + params.to_.1 in
-                let buyer_new_balance_tkB: nat = abs (buyer_balance_tkB - params.from_.1) in
+                    match Big_map.find_opt (buyer_address, params.token_ids.0) s.ledger with
+                    | None -> seller_to_debit
+                    | Some b -> b + seller_to_debit in
+                let buyer_new_balance_tkB: nat = abs (buyer_balance_tkB - buyer_to_debit) in
                 (* Seller *)
-                let seller_new_balance_tkA: nat = abs (seller_balance_tkA - params.from_.1) in
+                let seller_new_balance_tkA: nat = abs (seller_balance_tkA - seller_to_debit) in
                 let seller_new_balance_tkB: nat = 
-                    match Big_map.find_opt (params.from_.0, params.token_ids.1) s.ledger with
-                    | None -> 0n
-                    | Some b -> b + params.to_.1 in
+                    match Big_map.find_opt (seller_address, params.token_ids.1) s.ledger with
+                    | None -> buyer_to_debit
+                    | Some b -> b + buyer_to_debit in
                 (* Updates buyer balances in storage *)
                 let new_ledger1 = 
-                    Big_map.update (params.to_.0, params.token_ids.0) (Some buyer_new_balance_tkA) s.ledger in
+                    Big_map.update (buyer_address, params.token_ids.0) (Some buyer_new_balance_tkA) s.ledger in
                 let new_ledger2 = 
-                    Big_map.update (params.to_.0, params.token_ids.1) (Some buyer_new_balance_tkB) new_ledger1 in
+                    Big_map.update (buyer_address, params.token_ids.1) (Some buyer_new_balance_tkB) new_ledger1 in
                 (* Updates seller balances in storage *)
                 let new_ledger3 = 
-                    Big_map.update (params.from_.0, params.token_ids.0) (Some seller_new_balance_tkA) new_ledger2 in
+                    Big_map.update (seller_address, params.token_ids.0) (Some seller_new_balance_tkA) new_ledger2 in
                 let new_ledger4 = 
-                    Big_map.update (params.from_.0, params.token_ids.1) (Some seller_new_balance_tkB) new_ledger3 in
+                    Big_map.update (seller_address, params.token_ids.1) (Some seller_new_balance_tkB) new_ledger3 in
 
                 { s with ledger = new_ledger4 }
 

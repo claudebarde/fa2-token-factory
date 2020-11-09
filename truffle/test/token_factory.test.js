@@ -459,12 +459,48 @@ contract("FA2 Fungible Token Factory", () => {
         token_id: order.token_id_to_buy
       })
     ).toNumber();
+    /*console.log({
+      order: {
+        ...order,
+        token_amount_to_sell: order.token_amount_to_sell.toNumber(),
+        token_amount_to_buy: order.token_amount_to_buy.toNumber(),
+        total_token_amount: order.total_token_amount.toNumber()
+      },
+      aliceBalance: {
+        tokenToSell: aliceBalanceTokenToSell + "/" + aliceNewBalanceTokenToSell,
+        tokenToBuy: aliceBalanceTokenToBuy + "/" + aliceNewBalanceTokenToBuy
+      },
+      bobBalance: {
+        tokenToSell: bobBalanceTokenToSell + "/" + bobNewBalanceTokenToSell,
+        tokenToBuy: bobBalanceTokenToBuy + "/" + bobNewBalanceTokenToBuy
+      }
+    });*/
     // verifies swap of tokens happened in the ledger
+    // on Alice's side
     assert.equal(
       aliceNewBalanceTokenToSell,
       aliceBalanceTokenToSell -
         order.total_token_amount.toNumber() *
           order.token_amount_to_sell.toNumber()
+    );
+    assert.equal(
+      aliceNewBalanceTokenToBuy,
+      aliceBalanceTokenToBuy +
+        order.total_token_amount.toNumber() *
+          order.token_amount_to_buy.toNumber()
+    );
+    // on Bob's side
+    assert.equal(
+      bobNewBalanceTokenToSell,
+      bobBalanceTokenToSell +
+        order.total_token_amount.toNumber() *
+          order.token_amount_to_sell.toNumber()
+    );
+    assert.equal(
+      bobNewBalanceTokenToBuy,
+      bobBalanceTokenToBuy -
+        order.total_token_amount.toNumber() *
+          order.token_amount_to_buy.toNumber()
     );
   });
 
