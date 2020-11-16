@@ -2,6 +2,15 @@
   import { onMount } from "svelte";
   import { TezosToolkit } from "@taquito/taquito";
   import store from "../../store";
+  import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
+  import App from "src/App.svelte";
+
+  const initTezbridgeWallet = async () => {
+    const wallet = new TezBridgeWallet();
+    const userAddress = await wallet.getPKH();
+    store.updateWallet(wallet);
+    store.updateUserAddress(userAddress);
+  };
 
   onMount(() => {
     store.updateTezos(new TezosToolkit("http://localhost:8732"));
@@ -56,7 +65,7 @@
     #wallet-button {
       position: relative;
 
-      #wallet-menu {
+      .wallet-menu {
         display: none;
         position: absolute;
         top: 50px;
@@ -64,12 +73,26 @@
         flex-direction: column;
         background-color: lighten(#2d3748, 10);
         padding: 0;
-        width: 150px;
+
+        &#connect-wallet {
+          width: 150px;
+
+          p {
+            width: 110px;
+          }
+        }
+
+        &#wallet-connected {
+          width: 400px;
+
+          p {
+            width: 360px;
+          }
+        }
 
         p {
           margin: 0;
           padding: 10px 20px;
-          width: 110px;
           text-align: center;
           transition: 0.2s;
         }
@@ -78,7 +101,7 @@
         }
       }
 
-      &:hover #wallet-menu {
+      &:hover .wallet-menu {
         display: flex;
       }
     }
@@ -86,6 +109,10 @@
 
   .taquito-logo {
     width: 40px;
+  }
+
+  .user-avatar {
+    width: 50px;
   }
 </style>
 
@@ -96,14 +123,28 @@
       <div class="nav-button"><a href="#/createtoken">Create Token</a></div>
       <div class="nav-button"><a href="#/token">Find Token</a></div>
       <div class="nav-button" id="wallet-button">
-        {#if $store.wallet === undefined}
+        {#if $store.userAddress === undefined}
           <span>Wallet</span>
-          <div id="wallet-menu">
-            <p>TezBridge</p>
+          <div class="wallet-menu" id="connect-wallet">
+            <p on:click={initTezbridgeWallet}>TezBridge</p>
             <p>Beacon</p>
             <p>Thanos</p>
           </div>
-        {:else}<span>Connected</span>{/if}
+        {:else}
+          <img
+            class="user-avatar"
+            src={`https://services.tzkt.io/v1/avatars/${$store.userAddress}`}
+            alt="avatar" />
+          <div class="wallet-menu" id="wallet-connected">
+            <p>
+              <a
+                href={`https://tzkt.io/${$store.userAddress}`}
+                target="_blank"
+                rel="noopener noreferrer">Connected as
+                {`${$store.userAddress.slice(0, 5)}...${$store.userAddress.slice(-5)}`}</a>
+            </p>
+          </div>
+        {/if}
       </div>
     </div>
     <div>
