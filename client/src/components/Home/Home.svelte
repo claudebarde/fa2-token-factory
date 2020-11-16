@@ -6,7 +6,6 @@
       height: 60%;
       color: white;
       padding: 120px 50px;
-      background-image: url("images/background.png");
       background-repeat: no-repeat;
       background-position: center;
       background-size: cover;
@@ -57,7 +56,9 @@
 </style>
 
 <main>
-  <section class="banner">
+  <section
+    class="banner"
+    style={`background-image: url("images/background.png")`}>
     <div class="title">Tezos Token Factory</div>
     <div class="subtitle">
       Easily create, browse and exchange FA2 tokens on the Tezos blockchain
