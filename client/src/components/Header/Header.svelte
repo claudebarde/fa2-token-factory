@@ -1,4 +1,11 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { TezosToolkit } from "@taquito/taquito";
+  import store from "../../store";
+
+  onMount(() => {
+    store.updateTezos(new TezosToolkit("http://localhost:8732"));
+  });
 </script>
 
 <style lang="scss">
@@ -21,7 +28,6 @@
       justify-content: space-between;
       align-items: center;
       padding: 0px 10px;
-      height: 50px;
     }
   }
 
@@ -31,13 +37,49 @@
     height: 100%;
     font-size: 1.1rem;
 
-    div {
+    .nav-button {
       cursor: pointer;
       background-color: #2d3748;
       transition: 0.3s;
+      height: 50px;
 
       &:hover {
         background-color: lighten(#2d3748, 10);
+      }
+
+      a {
+        color: white;
+        text-decoration: none;
+      }
+    }
+
+    #wallet-button {
+      position: relative;
+
+      #wallet-menu {
+        display: none;
+        position: absolute;
+        top: 50px;
+        right: 0;
+        flex-direction: column;
+        background-color: lighten(#2d3748, 10);
+        padding: 0;
+        width: 150px;
+
+        p {
+          margin: 0;
+          padding: 10px 20px;
+          width: 110px;
+          text-align: center;
+          transition: 0.2s;
+        }
+        p:hover {
+          background-color: lighten(#2d3748, 20);
+        }
+      }
+
+      &:hover #wallet-menu {
+        display: flex;
       }
     }
   }
@@ -51,8 +93,18 @@
   <div>Tezos Token Factory</div>
   <div>
     <div class="navigation">
-      <div>Create Token</div>
-      <div>Find Token</div>
+      <div class="nav-button"><a href="#/createtoken">Create Token</a></div>
+      <div class="nav-button"><a href="#/token">Find Token</a></div>
+      <div class="nav-button" id="wallet-button">
+        {#if $store.wallet === undefined}
+          <span>Wallet</span>
+          <div id="wallet-menu">
+            <p>TezBridge</p>
+            <p>Beacon</p>
+            <p>Thanos</p>
+          </div>
+        {:else}<span>Connected</span>{/if}
+      </div>
     </div>
     <div>
       <a

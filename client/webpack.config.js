@@ -122,7 +122,7 @@ module.exports = {
   },
   devServer: {
     hot: true,
-    stats: "minimal",
+    stats: "none",
     contentBase: "public",
     watchContentBase: true
   },
