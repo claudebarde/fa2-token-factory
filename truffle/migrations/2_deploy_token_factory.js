@@ -29,7 +29,8 @@ const initialStorage = {
     }
   }),
   admin: alice.pkh,
-  exchange_address: alice.pkh
+  exchange_address: alice.pkh,
+  last_token_id: wrapperId
 };
 
 module.exports = async (deployer, _network, accounts) => {

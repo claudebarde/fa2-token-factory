@@ -6,6 +6,6 @@ import NotFound from "./components/NotFound/NotFound.svelte";
 export default {
   "/": Home,
   "/createtoken": CreateToken,
-  "/token/:id": TokenPage,
+  "/token/:id?": TokenPage,
   "*": NotFound
 };

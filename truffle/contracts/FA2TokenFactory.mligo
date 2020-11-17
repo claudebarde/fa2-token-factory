@@ -97,16 +97,15 @@ type token_metadata_param = {
 
 type token_metadata_param_michelson = token_metadata_param michelson_pair_right_comb
 
-type mint_tokens_params = {
-    token_id: token_id;
+type mint_tokens_params = 
+[@layout:comb]
+{
     symbol: string;
     name: string;
     decimals: nat;
-    extras : (string * string) list;
     total_supply: nat;
+    extras : (string * string) list;
 }
-
-type mint_tokens_params_michelson = mint_tokens_params michelson_pair_right_comb
 
 type order_type = Buy | Sell
 
@@ -147,7 +146,7 @@ type fa2_entry_points =
   | Balance_of of balance_of_param_michelson
   | Update_operators of update_operator_michelson list
   | Token_metadata_registry of address contract
-  | Mint_tokens of mint_tokens_params_michelson
+  | Mint_tokens of mint_tokens_params
   | Burn_tokens of token_id * nat
   | New_exchange_order of order_book_entry
   | Buy_from_exchange of order_id * nat
@@ -333,7 +332,6 @@ tools.
 
 
 # 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
-
 
 
 
@@ -911,6 +909,7 @@ type multi_token_storage = {
   token_metadata : token_metadata_storage;
   exchange_address: address;
   admin: address;
+  last_token_id: token_id;
 }
 
 
@@ -918,44 +917,38 @@ type multi_token_storage = {
 
 type token_extras = (string, string) map
 
-let mint_tokens ((params, s): mint_tokens_params_michelson * multi_token_storage) =
-    (* Converts the input to the appropriate record *)
-    let p: mint_tokens_params = 
-        Layout.convert_from_right_comb (params: mint_tokens_params_michelson) in
-    (* Checks if the provided token ID doesn't exist *)
-    if Big_map.mem p.token_id s.token_total_supply
-    then
-        (failwith "TOKEN_ALREADY_EXISTS": multi_token_storage)
-    else
-        (* Creates new metadata *)
-        let make_extras (extras, data: token_extras * (string * string)): token_extras =
-            Map.add data.0 data.1 extras in
-        let metadata: token_metadata = {
-            token_id = p.token_id;
-            admin = Tezos.sender;
-            symbol = p.symbol;
-            name = p.name;
-            decimals = p.decimals;
-            extras = List.fold make_extras p.extras (Map.empty: token_extras);
-        } in
-        let token_metadata_michelson: token_metadata_michelson = 
-            Layout.convert_to_right_comb (metadata: token_metadata) in
-        let new_token_metadata: token_metadata_storage = 
-            Big_map.add p.token_id token_metadata_michelson s.token_metadata in
-        (* Creates new token total supply *)
-        let total_supply: token_total_supply = 
-            Big_map.add p.token_id p.total_supply s.token_total_supply in
-        (* Adds new account in ledger *)
-        let new_ledger: ledger = 
-            Big_map.add (Tezos.sender, p.token_id) p.total_supply s.ledger in
-        (* Returns the updated storage *)
-        { s with ledger = new_ledger; 
-                token_total_supply = total_supply; 
-                token_metadata = new_token_metadata }
+let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
+    (* Creates new metadata *)
+    let make_extras (extras, data: token_extras * (string * string)): token_extras =
+        Map.add data.0 data.1 extras in
+    (* Creates new token id *)
+    let new_token_id: token_id = s.last_token_id + 1n in
+    let metadata: token_metadata = {
+        token_id = new_token_id;
+        admin = Tezos.sender;
+        symbol = p.symbol;
+        name = p.name;
+        decimals = p.decimals;
+        extras = List.fold make_extras p.extras (Map.empty: token_extras);
+    } in
+    let token_metadata_michelson: token_metadata_michelson = 
+        Layout.convert_to_right_comb (metadata: token_metadata) in
+    let new_token_metadata: token_metadata_storage = 
+        Big_map.add new_token_id token_metadata_michelson s.token_metadata in
+    (* Creates new token total supply *)
+    let total_supply: token_total_supply = 
+        Big_map.add new_token_id p.total_supply s.token_total_supply in
+    (* Adds new account in ledger *)
+    let new_ledger: ledger = 
+        Big_map.add (Tezos.sender, new_token_id) p.total_supply s.ledger in
+    (* Returns the updated storage *)
+    { s with ledger = new_ledger; 
+            token_total_supply = total_supply; 
+            token_metadata = new_token_metadata }
         
 
 
-# 27 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 28 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 # 1 "./multi_asset/ligo/src/../fa2/burn_tokens.mligo" 1
 let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_token_storage =
@@ -997,7 +990,7 @@ let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_tok
                         token_total_supply = Big_map.update token_id (Some (current_supply)) s.token_total_supply }
 
 
-# 28 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 29 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 # 1 "./multi_asset/ligo/src/../fa2/remote_exchange.mligo" 1
 (* Creates a new order in the remote exchange *)
@@ -1147,7 +1140,7 @@ let redeem_xtz_wrapper ((xtz_amount, s): nat * multi_token_storage): operation *
     (op, { s with 
         ledger = new_ledger; 
         token_total_supply = Big_map.update wrapper_id (Some (new_token_total_supply)) s.token_total_supply })
-# 29 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 30 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 let get_balance_amt (key, ledger : (address * nat) * ledger) : nat =
   let bal_opt = Big_map.find_opt key ledger in
