@@ -7,7 +7,10 @@
   import { NetworkType } from "@airgap/beacon-sdk";
   import { ThanosWallet } from "@thanos-wallet/dapp";
 
-  const rpcAddress = "http://localhost:8732";
+  const rpcAddress =
+    $store.network === "local"
+      ? "http://localhost:8732"
+      : "https://testnet-tezos.giganode.io";
 
   const initTezbridgeWallet = async () => {
     const wallet = new TezBridgeWallet();
