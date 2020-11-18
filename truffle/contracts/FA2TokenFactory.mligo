@@ -944,7 +944,8 @@ let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
     (* Returns the updated storage *)
     { s with ledger = new_ledger; 
             token_total_supply = total_supply; 
-            token_metadata = new_token_metadata }
+            token_metadata = new_token_metadata;
+            last_token_id = new_token_id; }
         
 
 

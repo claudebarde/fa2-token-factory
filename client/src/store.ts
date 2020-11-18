@@ -2,10 +2,11 @@ import { writable } from "svelte/store";
 import { TezosToolkit, ContractAbstraction, Wallet } from "@taquito/taquito";
 import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
 import { BeaconWallet } from "@taquito/beacon-wallet";
+import { ThanosWallet } from "@thanos-wallet/dapp";
 
 interface State {
   Tezos: TezosToolkit;
-  wallet: TezBridgeWallet | BeaconWallet;
+  wallet: TezBridgeWallet | BeaconWallet | ThanosWallet;
   userAddress: string | undefined;
   network: "mainnet" | "testnet" | "local";
   ledgerAddress: { mainnet: string; testnet: string; local: string };
@@ -20,16 +21,16 @@ const initialState: State = {
   Tezos: undefined,
   wallet: undefined,
   userAddress: undefined,
-  network: "local",
+  network: process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
     testnet: "",
-    local: "KT1WVpEscCLjzvebekoTtxZkLYZ5BMq2ESjY"
+    local: "KT1WhGJw8cSm8zduruEssnVGzVbbxKF7E8MS"
   },
   exchangeAddress: {
     mainnet: "",
     testnet: "",
-    local: "KT1EV3WN2kTtsjtriM2WGJn1AaPNZW1AvM8t"
+    local: "KT1CdYJJ6dkMmD5ApLmmaboEFpnxiusf2yvX"
   },
   ledgerInstance: undefined,
   ledgerStorage: undefined,
@@ -43,7 +44,7 @@ const state = {
   subscribe: store.subscribe,
   updateTezos: (tezos: TezosToolkit) =>
     store.update(store => ({ ...store, Tezos: tezos })),
-  updateWallet: (wallet: TezBridgeWallet | BeaconWallet) =>
+  updateWallet: (wallet: TezBridgeWallet | BeaconWallet | ThanosWallet) =>
     store.update(store => ({ ...store, wallet })),
   updateUserAddress: (address: string) => {
     store.update(store => ({ ...store, userAddress: address }));

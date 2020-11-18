@@ -5,6 +5,7 @@
   import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
   import { BeaconWallet } from "@taquito/beacon-wallet";
   import { NetworkType } from "@airgap/beacon-sdk";
+  import { ThanosWallet } from "@thanos-wallet/dapp";
 
   const rpcAddress = "http://localhost:8732";
 
@@ -23,6 +24,17 @@
     store.updateWallet(wallet);
     store.updateUserAddress(userAddress);
     $store.Tezos.setWalletProvider(wallet);
+  };
+
+  const initThanosWallet = async () => {
+    if (await ThanosWallet.isAvailable()) {
+      const wallet = new ThanosWallet("Tezos Token Factory");
+      await wallet.connect("sandbox", { forcePermission: true });
+      const userAddress = await wallet.getPKH();
+      store.updateWallet(wallet);
+      store.updateUserAddress(userAddress);
+      $store.Tezos.setWalletProvider(wallet);
+    }
   };
 
   onMount(async () => {
@@ -185,13 +197,14 @@
     <div class="navigation">
       <div class="nav-button"><a href="#/createtoken">Create Token</a></div>
       <div class="nav-button"><a href="#/token">Find Token</a></div>
+      <div class="nav-button"><a href="#/exchange">Exchange</a></div>
       <div class="nav-button" id="wallet-button">
         {#if $store.userAddress === undefined}
           <span>Wallet</span>
           <div class="wallet-menu" id="connect-wallet">
             <p on:click={initTezbridgeWallet}>TezBridge</p>
             <p on:click={initBeaconWallet}>Beacon</p>
-            <p>Thanos</p>
+            <p on:click={initThanosWallet}>Thanos</p>
           </div>
         {:else}
           <img
