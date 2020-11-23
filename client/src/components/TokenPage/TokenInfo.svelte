@@ -57,8 +57,10 @@
 <div class="token-totalsupply">
   {#if token.symbol === 'wTK'}
     wꜩ
-    {(token.totalSupply / 10 ** 6).toLocaleString('en-US')}
-  {:else}{token.totalSupply.toLocaleString('en-US')}{/if}
+    {(token.totalSupply / 10 ** token.decimals).toLocaleString('en-US')}
+  {:else}
+    {(token.totalSupply / 10 ** token.decimals).toLocaleString('en-US')}
+  {/if}
 </div>
 <div class="token-admin">
   <a

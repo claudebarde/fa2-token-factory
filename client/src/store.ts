@@ -27,12 +27,12 @@ const initialState: State = {
   ledgerAddress: {
     mainnet: "",
     testnet: "KT1DkGxeQKBjVQXpTzEzkrFWEZgxYcXEFYxZ",
-    local: "KT1JBKSdRjttmwDN2ijnTc1BTQnSEHTFMenW"
+    local: "KT1SGa8s6L92sxg5f3EZnyMv8Pi3J4odHWQd"
   },
   exchangeAddress: {
     mainnet: "",
     testnet: "KT1PiomgGFtHUtwPvyPWpLscV71HLxRdCkAv",
-    local: "KT1PebH9nRB9iempmz4zXCXTmKUKeP5T3PSq"
+    local: "KT1GEcGA4P4RTP1JmDh8UJA6o9Amgaqqq2UF"
   },
   ledgerInstance: undefined,
   ledgerStorage: undefined,
@@ -66,6 +66,24 @@ const state = {
   },
   updateTokens: (tokens: Token[]) => {
     store.update(store => ({ ...store, tokens }));
+  },
+  formatToken: async (tokenId: number, ledger: any): Promise<Token | null> => {
+    const entry = await ledger.token_metadata.get(tokenId.toString());
+    if (!entry) return null;
+
+    const totalSupply = await ledger.token_total_supply.get(tokenId.toString());
+    const extras = {};
+    entry.extras.forEach((value, key) => (extras[key] = value));
+
+    return {
+      tokenID: tokenId,
+      name: entry.name,
+      symbol: entry.symbol,
+      admin: entry.admin,
+      decimals: entry.decimals.toNumber(),
+      totalSupply: totalSupply.toNumber(),
+      extras
+    };
   }
 };
 

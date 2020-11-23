@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, afterUpdate } from "svelte";
+  import { afterUpdate } from "svelte";
   import store from "../../store";
   import TokenInfo from "./TokenInfo.svelte";
   import { Token } from "../../types";
@@ -7,8 +7,6 @@
   export let params;
 
   let paramToken: Token | undefined;
-
-  onMount(async () => {});
 
   afterUpdate(() => {
     if (params.id) {
@@ -106,7 +104,7 @@
   </section>
   <section class="body">
     {#if paramToken}
-      <div class="param-token__wrapper">
+      <div class={$store.userAddress ? 'param-token__wrapper' : ''}>
         <div class="param-token">
           <div class="param-token__title">
             <div>
@@ -120,7 +118,7 @@
           <div class="param-token__symbol">Symbol: {paramToken.symbol}</div>
           <div class="param-token__total-supply">
             Total Supply:
-            {paramToken.totalSupply.toLocaleString('en-US')}
+            {(paramToken.totalSupply / 10 ** paramToken.decimals).toLocaleString('en-US')}
             tokens
           </div>
           <div class="param-token__admin">
@@ -146,8 +144,10 @@
                 Your balance:
                 {#if paramToken.symbol === 'wTK'}
                   wꜩ
-                  {(paramToken.totalSupply / 10 ** 6).toLocaleString('en-US')}
-                {:else}{paramToken.totalSupply.toLocaleString('en-US')}{/if}
+                  {(balance / 10 ** paramToken.decimals).toLocaleString('en-US')}
+                {:else}
+                  {(balance / 10 ** paramToken.decimals).toLocaleString('en-US')}
+                {/if}
               </div>
               <div class="param-token__buttons">
                 <a href={`#/exchange/buy/${paramToken.tokenID}`}>

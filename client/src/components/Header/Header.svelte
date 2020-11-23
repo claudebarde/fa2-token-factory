@@ -64,26 +64,9 @@
     if ($store.ledgerStorage) {
       let tokenId = 1;
       while (true) {
-        const entry = await $store.ledgerStorage.token_metadata.get(
-          tokenId.toString()
-        );
-        if (!entry) break;
+        const token = await store.formatToken(tokenId, $store.ledgerStorage);
 
-        const totalSupply = await $store.ledgerStorage.token_total_supply.get(
-          tokenId.toString()
-        );
-        const extras = {};
-        entry.extras.forEach((value, key) => (extras[key] = value));
-
-        const token: Token = {
-          tokenID: tokenId,
-          name: entry.name,
-          symbol: entry.symbol,
-          admin: entry.admin,
-          decimals: entry.decimals.toNumber(),
-          totalSupply: totalSupply.toNumber(),
-          extras
-        };
+        if (!token) break;
 
         tokens = [...tokens, token];
         tokenId++;

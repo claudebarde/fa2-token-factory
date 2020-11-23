@@ -1,11 +1,40 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import store from "../../store";
-  import { OrderEntry } from "../../types";
+  import { OrderEntry, Token } from "../../types";
 
   let orderBook: OrderEntry[] = [];
   let tokenToBuy: string = "";
   let tokenToSell: string = "";
+  let buyWTK: string = "";
+
+  const buyXtzWrapper = async () => {
+    if (+buyWTK > 0) {
+      try {
+        const op = await $store.ledgerInstance.methods
+          .buy_xtz_wrapper([["unit"]])
+          .send({ amount: +buyWTK });
+        await op.confirmation();
+        // update the storage
+        const newStorage: any = await $store.ledgerInstance.storage();
+        store.updateLedgerStorage(newStorage);
+        // update the token info
+        const newTokenInfo: Token = await newStorage.token_metadata.get("1");
+        const newToken = await store.formatToken(1, newStorage);
+        if (newToken) {
+          const newTokens: Token[] = [
+            newToken,
+            ...$store.tokens.filter(token => token.tokenID !== 1)
+          ];
+          store.updateTokens(newTokens);
+        }
+
+        console.log("confirmed!");
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  };
 
   onMount(async () => {
     // TODO: remove for loop when using an indexer becomes possible
@@ -108,10 +137,13 @@
     <div class="buy-wtk">
       <div><strong>Buy wTK</strong></div>
       <div>
-        <div>
-          Amount:
-          <input type="text" />&nbsp;<button class="button info">Buy</button>
-        </div>
+        Amount:
+        <input type="text" bind:value={buyWTK} />&nbsp;
+        {#if !$store.userAddress}
+          <button class="button disabled" disabled>Connect your wallet</button>
+        {:else}
+          <button class="button info" on:click={buyXtzWrapper}>Buy</button>
+        {/if}
       </div>
     </div>
     <div class="new-order">
