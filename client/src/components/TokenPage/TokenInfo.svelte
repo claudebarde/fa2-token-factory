@@ -54,7 +54,12 @@
   <a href={`#/token/${token.tokenID}`}>{token.name}</a>
 </div>
 <div class="token-symbol">{token.symbol}</div>
-<div class="token-totalsupply">{token.totalSupply.toLocaleString('en-US')}</div>
+<div class="token-totalsupply">
+  {#if token.symbol === 'wTK'}
+    wꜩ
+    {(token.totalSupply / 10 ** 6).toLocaleString('en-US')}
+  {:else}{token.totalSupply.toLocaleString('en-US')}{/if}
+</div>
 <div class="token-admin">
   <a
     href={`https://${$store.network === 'local' || $store.network === 'testnet' ? 'carthage.' : ''}tzkt.io/${token.admin}`}

@@ -6,11 +6,14 @@
   import { BeaconWallet } from "@taquito/beacon-wallet";
   import { NetworkType } from "@airgap/beacon-sdk";
   import { ThanosWallet } from "@thanos-wallet/dapp";
+  import { Token } from "../../types";
 
   const rpcAddress =
     $store.network === "local"
       ? "http://localhost:8732"
       : "https://testnet-tezos.giganode.io";
+
+  let tokens: Token[] = [];
 
   const initTezbridgeWallet = async () => {
     const wallet = new TezBridgeWallet();
@@ -50,11 +53,44 @@
     store.updateLedgerStorage(ledgerStorage);
 
     const exchange = await Tezos.wallet.at(
-      $store.ledgerAddress[$store.network]
+      $store.exchangeAddress[$store.network]
     );
     store.updateExchangeInstance(exchange);
     const exchangeStorage = await exchange.storage();
     store.updateExchangeStorage(exchangeStorage);
+    // TODO
+    // this will be replaced by a call to an indexer once live on the blockchain
+    tokens = [];
+    if ($store.ledgerStorage) {
+      let tokenId = 1;
+      while (true) {
+        const entry = await $store.ledgerStorage.token_metadata.get(
+          tokenId.toString()
+        );
+        if (!entry) break;
+
+        const totalSupply = await $store.ledgerStorage.token_total_supply.get(
+          tokenId.toString()
+        );
+        const extras = {};
+        entry.extras.forEach((value, key) => (extras[key] = value));
+
+        const token: Token = {
+          tokenID: tokenId,
+          name: entry.name,
+          symbol: entry.symbol,
+          admin: entry.admin,
+          decimals: entry.decimals.toNumber(),
+          totalSupply: totalSupply.toNumber(),
+          extras
+        };
+
+        tokens = [...tokens, token];
+        tokenId++;
+      }
+      console.log("Tokens:", tokens);
+      store.updateTokens(tokens);
+    }
   });
 </script>
 

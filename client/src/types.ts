@@ -1,0 +1,19 @@
+export interface Token {
+  tokenID: number;
+  name: string;
+  symbol: string;
+  admin: string;
+  decimals: number;
+  totalSupply: number;
+  extras: { [n: string]: string };
+}
+
+export interface OrderEntry {
+  order_type: "buy" | "sell";
+  token_id_to_sell: number;
+  token_amount_to_sell: number;
+  token_id_to_buy: number;
+  token_amount_to_buy: number;
+  total_token_amount: number;
+  seller: string;
+}

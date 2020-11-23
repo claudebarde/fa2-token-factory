@@ -65,12 +65,11 @@ contract("FA2 Fungible Token Factory", () => {
     try {
       const op = await fa2_instance.methods
         .mint_tokens(
-          aliToken.id,
           aliToken.symbol,
           aliToken.name,
           aliToken.decimals,
-          aliToken.extras,
-          aliToken.totalSupply
+          aliToken.totalSupply,
+          aliToken.extras
         )
         .send();
       await op.confirmation();
@@ -162,7 +161,7 @@ contract("FA2 Fungible Token Factory", () => {
 
     let err;
 
-    try {
+    /*try {
       // should fail if token ID already exists
       const op = await fa2_instance.methods
         .mint_tokens(
@@ -179,18 +178,17 @@ contract("FA2 Fungible Token Factory", () => {
       err = error.message;
     }
 
-    assert.equal(err, "TOKEN_ALREADY_EXISTS");
+    assert.equal(err, "TOKEN_ALREADY_EXISTS");*/
 
     try {
       // should fail if token ID already exists
       const op = await fa2_instance.methods
         .mint_tokens(
-          bobToken.id,
           bobToken.symbol,
           bobToken.name,
           bobToken.decimals,
-          bobToken.extras,
-          bobToken.totalSupply
+          bobToken.totalSupply,
+          bobToken.extras
         )
         .send();
       await op.confirmation();

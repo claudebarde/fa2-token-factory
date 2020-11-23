@@ -8,6 +8,7 @@ export default {
   "/": Home,
   "/createtoken": CreateToken,
   "/token/:id?": TokenPage,
+  "/exchange/:orderType/:tokenID": Exchange,
   "/exchange/:orderID?": Exchange,
   "*": NotFound
 };

@@ -1,65 +1,27 @@
 <script lang="ts">
-  interface Token {
-    tokenID: number;
-    name: string;
-    symbol: string;
-    admin: string;
-    decimals: number;
-    totalSupply: number;
-    extras: { [n: string]: string };
-  }
-
   import { onMount, afterUpdate } from "svelte";
   import store from "../../store";
   import TokenInfo from "./TokenInfo.svelte";
+  import { Token } from "../../types";
 
   export let params;
 
-  let tokens: Token[] = [];
   let paramToken: Token | undefined;
 
-  onMount(async () => {
-    // this will be replaced by a call to an indexer once live on the blockchain
-    tokens = [];
-    if ($store.ledgerStorage) {
-      let tokenId = 1;
-      while (true) {
-        const entry = await $store.ledgerStorage.token_metadata.get(
-          tokenId.toString()
-        );
-        if (!entry) break;
-
-        const totalSupply = await $store.ledgerStorage.token_total_supply.get(
-          tokenId.toString()
-        );
-        const extras = {};
-        entry.extras.forEach((value, key) => (extras[key] = value));
-
-        const token: Token = {
-          tokenID: tokenId,
-          name: entry.name,
-          symbol: entry.symbol,
-          admin: entry.admin,
-          decimals: entry.decimals.toNumber(),
-          totalSupply: totalSupply.toNumber(),
-          extras
-        };
-
-        tokens = [...tokens, token];
-        tokenId++;
-      }
-      console.log("Tokens:", tokens);
-    }
-  });
+  onMount(async () => {});
 
   afterUpdate(() => {
     if (params.id) {
       if (isNaN(params.id)) {
         // token symbol provided
-        paramToken = tokens.filter(token => token.symbol === params.id)[0];
+        paramToken = $store.tokens.filter(
+          token => token.symbol === params.id
+        )[0];
       } else {
         // token id provided
-        paramToken = tokens.filter(token => token.tokenID === +params.id)[0];
+        paramToken = $store.tokens.filter(
+          token => token.tokenID === +params.id
+        )[0];
       }
     }
   });
@@ -105,8 +67,12 @@
     }
   }
 
+  .param-token__wrapper {
+    height: 330px;
+  }
+
   .param-token {
-    padding: 20px;
+    padding: 10px 20px;
     margin-bottom: 40px;
     background-color: white;
     border-radius: 10px;
@@ -126,6 +92,11 @@
         margin: 0px 20px 0px 0px;
       }
     }
+
+    .param-token__buttons {
+      display: flex;
+      justify-content: space-around;
+    }
   }
 </style>
 
@@ -135,47 +106,64 @@
   </section>
   <section class="body">
     {#if paramToken}
-      <div class="param-token">
-        <div class="param-token__title">
-          <div>
-            <img
-              class="param-token__title__icon"
-              src={paramToken.extras.hasOwnProperty('icon_url') ? paramToken.extras.icon_url : 'images/tezos-coin.png'}
-              alt="token icon" />
+      <div class="param-token__wrapper">
+        <div class="param-token">
+          <div class="param-token__title">
+            <div>
+              <img
+                class="param-token__title__icon"
+                src={paramToken.extras.hasOwnProperty('icon_url') ? paramToken.extras.icon_url : 'images/tezos-coin.png'}
+                alt="token icon" />
+            </div>
+            <div>{paramToken.name} Token</div>
           </div>
-          <div>{paramToken.name} Token</div>
-        </div>
-        <div class="param-token__symbol">Symbol: {paramToken.symbol}</div>
-        <div class="param-token__total-supply">
-          Total Supply:
-          {paramToken.totalSupply.toLocaleString('en-US')}
-          tokens
-        </div>
-        <div class="param-token__admin">
-          Admin:
-          <a
-            href={`https://${$store.network === 'local' || $store.network === 'testnet' ? 'carthage.' : ''}tzkt.io/${paramToken.admin}`}
-            target="_blank"
-            rel="noopener noreferrer">
-            {`${paramToken.admin.slice(0, 10)}...${paramToken.admin.slice(-10)}`}
-          </a>
-        </div>
-        {#if $store.userAddress}
-          <div class="param-token__balance">
-            Your balance:
+          <div class="param-token__symbol">Symbol: {paramToken.symbol}</div>
+          <div class="param-token__total-supply">
+            Total Supply:
+            {paramToken.totalSupply.toLocaleString('en-US')}
+            tokens
+          </div>
+          <div class="param-token__admin">
+            Admin:
+            <a
+              href={`https://${$store.network === 'local' || $store.network === 'testnet' ? 'carthage.' : ''}tzkt.io/${paramToken.admin}`}
+              target="_blank"
+              rel="noopener noreferrer">
+              {`${paramToken.admin.slice(0, 10)}...${paramToken.admin.slice(-10)}`}
+            </a>
+          </div>
+          {#if $store.userAddress}
             {#await $store.ledgerStorage.ledger.get({
               owner: $store.userAddress,
               token_id: paramToken.tokenID
             })}
-              fetching your balance...
+              <div class="param-token__balance">Fetching your balance...</div>
+              <div class="param-token__buttons">
+                <button class="button info">Loading</button>
+              </div>
             {:then balance}
-              {balance.toNumber().toLocaleString('en-US')}
-              tokens
+              <div class="param-token__balance">
+                Your balance:
+                {#if paramToken.symbol === 'wTK'}
+                  wꜩ
+                  {(paramToken.totalSupply / 10 ** 6).toLocaleString('en-US')}
+                {:else}{paramToken.totalSupply.toLocaleString('en-US')}{/if}
+              </div>
+              <div class="param-token__buttons">
+                <a href={`#/exchange/buy/${paramToken.tokenID}`}>
+                  <button class="button buy">Buy</button>
+                </a>
+                {#if balance.toNumber() > 0}
+                  <a href={`#/exchange/sell/${paramToken.tokenID}`}>
+                    <button class="button sell">Sell</button>
+                  </a>
+                {/if}
+              </div>
             {:catch error}
-              None
+              <div class="param-token__balance">Balance: None</div>
             {/await}
-          </div>
-        {/if}
+          {/if}
+        </div>
       </div>
     {/if}
     <div class="tokens-grid">
@@ -185,7 +173,7 @@
       <div class="token-totalsupply"><strong>Total Supply</strong></div>
       <div class="token-admin"><strong>Admin</strong></div>
       <div class="token-extras"><strong>Extras</strong></div>
-      {#each tokens as token}
+      {#each $store.tokens as token}
         <TokenInfo {token} />
       {:else}
         <div />

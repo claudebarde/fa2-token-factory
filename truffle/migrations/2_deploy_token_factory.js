@@ -24,7 +24,7 @@ const initialStorage = {
       admin: alice.pkh,
       symbol: "wTK",
       name: "wToken",
-      decimals: 0,
+      decimals: 6,
       extras: new MichelsonMap()
     }
   }),

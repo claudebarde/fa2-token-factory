@@ -124,7 +124,8 @@ module.exports = {
     hot: true,
     stats: "none",
     contentBase: "public",
-    watchContentBase: true
+    watchContentBase: true,
+    clientLogLevel: "silent"
   },
   mode,
   plugins: [
