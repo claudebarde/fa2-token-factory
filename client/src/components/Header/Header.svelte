@@ -6,7 +6,8 @@
   import { BeaconWallet } from "@taquito/beacon-wallet";
   import { NetworkType } from "@airgap/beacon-sdk";
   import { ThanosWallet } from "@thanos-wallet/dapp";
-  import { Token } from "../../types";
+  import BigNumber from "bignumber.js";
+  import { Token, UserToken } from "../../types";
 
   const rpcAddress =
     $store.network === "local"
@@ -14,6 +15,34 @@
       : "https://testnet-tezos.giganode.io";
 
   let tokens: Token[] = [];
+
+  const setUserTokens = async (address: string): Promise<void> => {
+    // retrieves user's balances after wallet connection
+    const balancePromises: Promise<BigNumber>[] = [];
+
+    tokens.forEach(token => {
+      balancePromises.push(
+        $store.ledgerStorage.ledger.get({
+          owner: address,
+          token_id: token.tokenID
+        })
+      );
+    });
+
+    const balances = await Promise.all(balancePromises);
+    const userTokens: UserToken[] = [];
+    balances.forEach((b, i) => {
+      const balance = b.toNumber();
+      if (balance > 0) {
+        userTokens.push({
+          ...$store.tokens.filter(tk => tk.tokenID === i + 1)[0],
+          balance: balance
+        });
+      }
+    });
+
+    store.updateUserTokens(userTokens);
+  };
 
   const initTezbridgeWallet = async () => {
     const wallet = new TezBridgeWallet();
@@ -40,6 +69,7 @@
       store.updateWallet(wallet);
       store.updateUserAddress(userAddress);
       $store.Tezos.setWalletProvider(wallet);
+      setUserTokens(userAddress);
     }
   };
 
@@ -241,6 +271,12 @@
                 rel="noopener noreferrer">Connected as
                 {`${$store.userAddress.slice(0, 5)}...${$store.userAddress.slice(-5)}`}</a>
             </p>
+            {#each $store.userTokens as token}
+              <p>
+                {token.symbol}
+                {Math.round(token.balance / 10 ** token.decimals).toLocaleString('en-US')}
+              </p>
+            {/each}
           </div>
         {/if}
       </div>

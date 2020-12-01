@@ -8,6 +8,10 @@ export interface Token {
   extras: { [n: string]: string };
 }
 
+export interface UserToken extends Token {
+  balance: number;
+}
+
 export interface OrderEntry {
   order_type: "buy" | "sell";
   token_id_to_sell: number;
@@ -17,3 +21,5 @@ export interface OrderEntry {
   total_token_amount: number;
   seller: string;
 }
+
+export type ModalType = "confirmWTKbuy" | "confirmNewOrder";

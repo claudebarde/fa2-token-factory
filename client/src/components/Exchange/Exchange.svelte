@@ -2,15 +2,29 @@
   import { onMount } from "svelte";
   import store from "../../store";
   import { OrderEntry, Token } from "../../types";
+  import Modal from "../Modal/Modal.svelte";
 
   let orderBook: OrderEntry[] = [];
-  let tokenToBuy: string = "";
-  let tokenToSell: string = "";
+  let tokenToBuy: number = 0;
+  let tokenToBuyAmount: string = "";
+  let tokenToSell: number = 0;
+  let tokenToSellAmount: string = "";
   let buyWTK: string = "";
+  let loadingBuyWtk = false;
+  let openBuyWtkModal = false;
+  let openConfirmNewOrder = false;
 
-  const buyXtzWrapper = async () => {
+  const buyXtzWrapper = () => {
     if (+buyWTK > 0) {
+      openBuyWtkModal = true;
+    }
+  };
+
+  const confirmBuyXtzWrapper = async () => {
+    if (+buyWTK > 0) {
+      openBuyWtkModal = false;
       try {
+        loadingBuyWtk = true;
         const op = await $store.ledgerInstance.methods
           .buy_xtz_wrapper([["unit"]])
           .send({ amount: +buyWTK });
@@ -19,7 +33,6 @@
         const newStorage: any = await $store.ledgerInstance.storage();
         store.updateLedgerStorage(newStorage);
         // update the token info
-        const newTokenInfo: Token = await newStorage.token_metadata.get("1");
         const newToken = await store.formatToken(1, newStorage);
         if (newToken) {
           const newTokens: Token[] = [
@@ -28,8 +41,77 @@
           ];
           store.updateTokens(newTokens);
         }
+        // updates user's displayed balance
+        console.log($store.userTokens);
+        if ($store.userTokens.filter(tk => tk.tokenID === 1).length === 1) {
+          // user previously had wTK tokens
+          const newTokens = $store.userTokens.map(tk => {
+            if (tk.tokenID === 1) {
+              return {
+                ...tk,
+                balance: tk.balance + +buyWTK * 10 ** tk.decimals
+              };
+            } else {
+              return tk;
+            }
+          });
 
-        console.log("confirmed!");
+          store.updateUserTokens(newTokens);
+        } else {
+          // user bought wTK tokens for the first time
+          const newTokens = [
+            ...$store.userTokens,
+            {
+              ...$store.tokens.filter(tk => tk.tokenID === 1)[0],
+              balance: +buyWTK
+            }
+          ];
+
+          store.updateUserTokens(newTokens);
+        }
+        buyWTK = "";
+      } catch (error) {
+        console.log(error);
+      } finally {
+        loadingBuyWtk = false;
+      }
+    }
+  };
+
+  const createNewOrder = () => {
+    if (
+      $store.userAddress &&
+      tokenToBuy > 0 &&
+      tokenToSell > 0 &&
+      !isNaN(+tokenToSellAmount) &&
+      !isNaN(+tokenToBuyAmount)
+    ) {
+      openConfirmNewOrder = true;
+    }
+  };
+
+  const confirmNewOrder = () => {
+    if (
+      $store.userAddress &&
+      tokenToBuy > 0 &&
+      tokenToSell > 0 &&
+      !isNaN(+tokenToSellAmount) &&
+      !isNaN(+tokenToBuyAmount)
+    ) {
+      openConfirmNewOrder = false;
+
+      try {
+        /*const op = $store.ledgerInstance.methods
+          .new_exchange_order(
+            "buy",
+            tokenToSell,
+            tokenToSellAmount,
+            tokenToBuy,
+            tokenToBuyAmount,
+            tokenToSellAmount,
+            $store.userAddress
+          )
+          .send();*/
       } catch (error) {
         console.log(error);
       }
@@ -141,8 +223,14 @@
         <input type="text" bind:value={buyWTK} />&nbsp;
         {#if !$store.userAddress}
           <button class="button disabled" disabled>Connect your wallet</button>
+        {:else if loadingBuyWtk}
+          <button class="button blue" disabled>
+            <span>Buying...</span><span class="spinner" />
+          </button>
         {:else}
-          <button class="button info" on:click={buyXtzWrapper}>Buy</button>
+          <button class="button blue" on:click={buyXtzWrapper}>
+            <span>Buy</span>
+          </button>
         {/if}
       </div>
     </div>
@@ -152,12 +240,12 @@
         <div>Sell:</div>
         <div class="dropdown">
           <div class="dropdown-title">
-            {!tokenToSell ? 'Select' : tokenToSell}
+            {!tokenToSell ? 'Select' : $store.tokens.filter(tk => tk.tokenID === tokenToSell)[0].symbol}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
             {#each $store.tokens as token}
-              <div on:click={() => (tokenToSell = token.symbol)}>
+              <div on:click={() => (tokenToSell = token.tokenID)}>
                 {token.symbol}
               </div>
             {:else}
@@ -165,16 +253,16 @@
             {/each}
           </div>
         </div>
-        <div>Amount: <input type="text" /></div>
+        <div>Amount: <input type="text" bind:value={tokenToSellAmount} /></div>
         <div>Buy:</div>
         <div class="dropdown">
           <div class="dropdown-title">
-            {!tokenToBuy ? 'Select' : tokenToBuy}
+            {!tokenToBuy ? 'Select' : $store.tokens.filter(tk => tk.tokenID === tokenToBuy)[0].symbol}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
             {#each $store.tokens as token}
-              <div on:click={() => (tokenToBuy = token.symbol)}>
+              <div on:click={() => (tokenToBuy = token.tokenID)}>
                 {token.symbol}
               </div>
             {:else}
@@ -182,11 +270,15 @@
             {/each}
           </div>
         </div>
-        <div>Amount: <input type="text" /></div>
+        <div>Amount: <input type="text" bind:value={tokenToBuyAmount} /></div>
         <div>
           {#if !$store.userAddress}
             <button class="button disabled" disabled>Connect your wallet</button>
-          {:else}<button class="button info">Confirm</button>{/if}
+          {:else}
+            <button
+              class="button blue"
+              on:click={createNewOrder}>Confirm</button>
+          {/if}
         </div>
       </div>
     </div>
@@ -215,3 +307,14 @@
     </div>
   </section>
 </main>
+<Modal
+  modalType="confirmWTKbuy"
+  open={openBuyWtkModal}
+  close={() => (openBuyWtkModal = false)}
+  confirm={confirmBuyXtzWrapper} />
+<Modal
+  modalType="confirmNewOrder"
+  payload={{ tokenToBuy, tokenToBuyAmount, tokenToSell, tokenToSellAmount }}
+  open={openConfirmNewOrder}
+  close={() => (openConfirmNewOrder = false)}
+  confirm={confirmNewOrder} />

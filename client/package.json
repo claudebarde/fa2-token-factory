@@ -33,9 +33,9 @@
 		"webpack-dev-server": "^3.11.0"
 	},
 	"dependencies": {
-		"@taquito/beacon-wallet": "^7.0.0-beta.0",
-		"@taquito/taquito": "^7.0.0-beta.0",
-		"@taquito/tezbridge-wallet": "^7.0.0-beta.0",
+		"@taquito/beacon-wallet": "^7.1.0-preview.7",
+		"@taquito/taquito": "^7.1.0-preview.7",
+		"@taquito/tezbridge-wallet": "^7.1.0-preview.7",
 		"@thanos-wallet/dapp": "^1.0.2",
 		"serve": "^11.3.2",
 		"svelte-spa-router": "^3.0.5"

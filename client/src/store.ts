@@ -3,7 +3,7 @@ import { TezosToolkit, ContractAbstraction, Wallet } from "@taquito/taquito";
 import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
 import { BeaconWallet } from "@taquito/beacon-wallet";
 import { ThanosWallet } from "@thanos-wallet/dapp";
-import { Token } from "./types";
+import { Token, UserToken } from "./types";
 
 interface State {
   Tezos: TezosToolkit;
@@ -17,6 +17,7 @@ interface State {
   exchangeInstance: ContractAbstraction<Wallet> | undefined;
   exchangeStorage: any;
   tokens: Token[];
+  userTokens: UserToken[];
 }
 
 const initialState: State = {
@@ -27,18 +28,19 @@ const initialState: State = {
   ledgerAddress: {
     mainnet: "",
     testnet: "KT1DkGxeQKBjVQXpTzEzkrFWEZgxYcXEFYxZ",
-    local: "KT1SGa8s6L92sxg5f3EZnyMv8Pi3J4odHWQd"
+    local: "KT1CCj7pKNN8r3CupsV6iBqpGfVrFvid9SL6"
   },
   exchangeAddress: {
     mainnet: "",
     testnet: "KT1PiomgGFtHUtwPvyPWpLscV71HLxRdCkAv",
-    local: "KT1GEcGA4P4RTP1JmDh8UJA6o9Amgaqqq2UF"
+    local: "KT19P5g2yM1HmHzw7FHYAEiydn46LTNe9po8"
   },
   ledgerInstance: undefined,
   ledgerStorage: undefined,
   exchangeInstance: undefined,
   exchangeStorage: undefined,
-  tokens: []
+  tokens: [],
+  userTokens: []
 };
 
 const store = writable(initialState);
@@ -84,6 +86,9 @@ const state = {
       totalSupply: totalSupply.toNumber(),
       extras
     };
+  },
+  updateUserTokens: (tokens: UserToken[]) => {
+    store.update(store => ({ ...store, userTokens: tokens }));
   }
 };
 

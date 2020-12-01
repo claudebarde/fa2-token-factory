@@ -137,7 +137,7 @@
             })}
               <div class="param-token__balance">Fetching your balance...</div>
               <div class="param-token__buttons">
-                <button class="button info">Loading</button>
+                <button class="button blue">Loading</button>
               </div>
             {:then balance}
               <div class="param-token__balance">
@@ -151,11 +151,11 @@
               </div>
               <div class="param-token__buttons">
                 <a href={`#/exchange/buy/${paramToken.tokenID}`}>
-                  <button class="button buy">Buy</button>
+                  <button class="button green">Buy</button>
                 </a>
                 {#if balance.toNumber() > 0}
                   <a href={`#/exchange/sell/${paramToken.tokenID}`}>
-                    <button class="button sell">Sell</button>
+                    <button class="button red">Sell</button>
                   </a>
                 {/if}
               </div>
