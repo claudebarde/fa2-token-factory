@@ -11,8 +11,22 @@
   let tokenToSellAmount: string = "";
   let buyWTK: string = "";
   let loadingBuyWtk = false;
+  let loadingConfirmNewOrder = false;
   let openBuyWtkModal = false;
   let openConfirmNewOrder = false;
+
+  const displayMaxAmount = (tokenID: number): string => {
+    const token = $store.userTokens.filter(
+      (tk) => tk.tokenID === tokenToSell
+    )[0];
+    if (token) {
+      const balance = token.balance / 10 ** token.decimals;
+
+      return "Max: " + balance.toString();
+    } else {
+      return "";
+    }
+  };
 
   const buyXtzWrapper = () => {
     if (+buyWTK > 0) {
@@ -37,19 +51,18 @@
         if (newToken) {
           const newTokens: Token[] = [
             newToken,
-            ...$store.tokens.filter(token => token.tokenID !== 1)
+            ...$store.tokens.filter((token) => token.tokenID !== 1),
           ];
           store.updateTokens(newTokens);
         }
         // updates user's displayed balance
-        console.log($store.userTokens);
-        if ($store.userTokens.filter(tk => tk.tokenID === 1).length === 1) {
+        if ($store.userTokens.filter((tk) => tk.tokenID === 1).length === 1) {
           // user previously had wTK tokens
-          const newTokens = $store.userTokens.map(tk => {
+          const newTokens = $store.userTokens.map((tk) => {
             if (tk.tokenID === 1) {
               return {
                 ...tk,
-                balance: tk.balance + +buyWTK * 10 ** tk.decimals
+                balance: tk.balance + +buyWTK * 10 ** tk.decimals,
               };
             } else {
               return tk;
@@ -62,9 +75,9 @@
           const newTokens = [
             ...$store.userTokens,
             {
-              ...$store.tokens.filter(tk => tk.tokenID === 1)[0],
-              balance: +buyWTK
-            }
+              ...$store.tokens.filter((tk) => tk.tokenID === 1)[0],
+              balance: +buyWTK,
+            },
           ];
 
           store.updateUserTokens(newTokens);
@@ -90,7 +103,7 @@
     }
   };
 
-  const confirmNewOrder = () => {
+  const confirmNewOrder = async () => {
     if (
       $store.userAddress &&
       tokenToBuy > 0 &&
@@ -99,37 +112,45 @@
       !isNaN(+tokenToBuyAmount)
     ) {
       openConfirmNewOrder = false;
+      loadingConfirmNewOrder = true;
 
       try {
-        /*const op = $store.ledgerInstance.methods
+        const op = await $store.ledgerInstance.methods
           .new_exchange_order(
             "buy",
-            tokenToSell,
+            [["unit"]],
+            tokenToSell.toString(),
             tokenToSellAmount,
-            tokenToBuy,
+            tokenToBuy.toString(),
             tokenToBuyAmount,
             tokenToSellAmount,
             $store.userAddress
           )
-          .send();*/
+          .send();
+        console.log(op.opHash);
+        await op.confirmation();
+        // clears UI
+        tokenToBuy = 0;
+        tokenToSell = 0;
+        tokenToSellAmount = "";
+        tokenToBuyAmount = "";
+        // adds new order to local order book
       } catch (error) {
         console.log(error);
+      } finally {
+        loadingConfirmNewOrder = false;
       }
     }
   };
 
   onMount(async () => {
-    // TODO: remove for loop when using an indexer becomes possible
-    for (let i = 0; i < 10; i++) {
-      const order: OrderEntry = await $store.exchangeStorage.order_book.get(
-        i.toString()
-      );
-      if (!order) {
-        break;
-      } else {
-        orderBook = [order, ...orderBook];
-      }
-    }
+    const exchangeBookId = $store.exchangeStorage.order_book.id.toNumber();
+    const url = `https://api.better-call.dev/v1/bigmap/${
+      $store.network === "testnet" ? "delphinet" : $store.network
+    }/${exchangeBookId}/keys`;
+    const response = await fetch(url);
+    const data = await response.json();
+    console.log(data);
   });
 </script>
 
@@ -240,11 +261,11 @@
         <div>Sell:</div>
         <div class="dropdown">
           <div class="dropdown-title">
-            {!tokenToSell ? 'Select' : $store.tokens.filter(tk => tk.tokenID === tokenToSell)[0].symbol}
+            {!tokenToSell ? 'Select' : $store.tokens.filter((tk) => tk.tokenID === tokenToSell)[0].symbol}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
-            {#each $store.tokens as token}
+            {#each $store.userTokens as token}
               <div on:click={() => (tokenToSell = token.tokenID)}>
                 {token.symbol}
               </div>
@@ -253,11 +274,17 @@
             {/each}
           </div>
         </div>
-        <div>Amount: <input type="text" bind:value={tokenToSellAmount} /></div>
+        <div>
+          Amount:
+          <input
+            type="text"
+            bind:value={tokenToSellAmount}
+            placeholder={tokenToSell > 0 ? displayMaxAmount(tokenToSell) : ''} />
+        </div>
         <div>Buy:</div>
         <div class="dropdown">
           <div class="dropdown-title">
-            {!tokenToBuy ? 'Select' : $store.tokens.filter(tk => tk.tokenID === tokenToBuy)[0].symbol}
+            {!tokenToBuy ? 'Select' : $store.tokens.filter((tk) => tk.tokenID === tokenToBuy)[0].symbol}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
@@ -275,9 +302,11 @@
           {#if !$store.userAddress}
             <button class="button disabled" disabled>Connect your wallet</button>
           {:else}
-            <button
-              class="button blue"
-              on:click={createNewOrder}>Confirm</button>
+            <button class="button blue" on:click={createNewOrder}>
+              {#if loadingConfirmNewOrder}
+                <span>Confirming...</span><span class="spinner" />
+              {:else}<span>Confirm</span>{/if}
+            </button>
           {/if}
         </div>
       </div>

@@ -1,12 +1,15 @@
 const FA2TokenFactory = artifacts.require("FA2TokenFactory");
 const { MichelsonMap } = require("@taquito/taquito");
 const { alice } = require("../scripts/sandbox/accounts");
+const faucet = require("../faucet");
+
+const admin = faucet.pkh; //alice.pkh;
 
 const wrapperId = 1;
 const ledger = new MichelsonMap();
 ledger.set(
   {
-    owner: alice.pkh,
+    owner: admin,
     token_id: wrapperId
   },
   0
@@ -21,15 +24,15 @@ const initialStorage = {
   token_metadata: MichelsonMap.fromLiteral({
     [wrapperId]: {
       token_id: wrapperId,
-      admin: alice.pkh,
+      admin,
       symbol: "wTK",
       name: "wToken",
       decimals: 6,
       extras: new MichelsonMap()
     }
   }),
-  admin: alice.pkh,
-  exchange_address: alice.pkh,
+  admin,
+  exchange_address: admin,
   last_token_id: wrapperId
 };
 

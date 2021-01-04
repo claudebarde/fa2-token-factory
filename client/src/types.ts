@@ -23,3 +23,10 @@ export interface OrderEntry {
 }
 
 export type ModalType = "confirmWTKbuy" | "confirmNewOrder";
+
+export type WalletType =
+  | "tezbridge"
+  | "thanos"
+  | "beacon"
+  | "kukai"
+  | undefined;

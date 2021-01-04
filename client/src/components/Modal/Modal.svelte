@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fly, fade } from "svelte/transition";
   import { ModalType } from "../../types";
+  import store from "../../store";
 
   export let modalType: ModalType;
   export let open = false;
@@ -11,25 +12,29 @@
   const calculateExchangeRate = async (): Promise<{
     amountToSell: number;
     amountToBuy: number;
+    totalAmount: number;
   }> => {
     const {
       tokenToSell,
       tokenToBuy,
       tokenToBuyAmount,
-      tokenToSellAmount
+      tokenToSellAmount,
     } = payload;
     let amountToSell = 0;
     let amountToBuy = 0;
+    let totalAmount = 0;
 
     if (tokenToSell >= tokenToBuy) {
       amountToSell = 1;
       amountToBuy = Math.round(+tokenToBuyAmount / +tokenToSellAmount);
+      totalAmount = tokenToSell;
     } else {
       amountToBuy = 1;
       amountToSell = Math.round(+tokenToSellAmount / +tokenToBuyAmount);
+      totalAmount = tokenToBuy;
     }
 
-    return { amountToSell, amountToBuy };
+    return { amountToSell, amountToBuy, totalAmount };
   };
 </script>
 
@@ -111,8 +116,14 @@
             details:
           </p>
           {#await calculateExchangeRate() then val}
-            <p>Amount to sell: {val.amountToSell}</p>
-            <p>Amount to buy: {val.amountToBuy}</p>
+            <p>
+              Exchange:
+              {payload.tokenToSellAmount}
+              {$store.tokens.filter((tk) => tk.tokenID === payload.tokenToSell)[0].symbol}
+              for
+              {payload.tokenToBuyAmount}
+              {$store.tokens.filter((tk) => tk.tokenID === payload.tokenToBuy)[0].symbol}
+            </p>
           {/await}
           <p>Confirm this new order?</p>
         {:else}This is an empty modal{/if}

@@ -1,9 +1,9 @@
-# 1 "./multi_asset/ligo/src/fa2_multi_token.mligo"
+# 1 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo"
 
 
 
 
-# 1 "./multi_asset/ligo/src/../fa2/fa2_interface.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/fa2_interface.mligo" 1
 
 
 
@@ -123,12 +123,21 @@ type order_book_entry =
 
 type token_amounts_to_swap = { to_buy: nat; to_sell: nat }
 
+type buy_params =
+[@layout:comb]
+{
+  order_id: order_id;
+  token_from: token_id;
+  amount: nat;
+}
+
 type order_params =
 [@layout:comb]
 {
     order_id: order_id;
     amount_to_buy: nat;
     buyer: address;
+    buyer_balance: nat; (* balance of token to be exchanged for the target token *)
 }
 
 type confirm_buy_params = 
@@ -149,7 +158,7 @@ type fa2_entry_points =
   | Mint_tokens of mint_tokens_params
   | Burn_tokens of token_id * nat
   | New_exchange_order of order_book_entry
-  | Buy_from_exchange of order_id * nat
+  | Buy_from_exchange of buy_params
   | Confirm_buy_from_exchange of confirm_buy_params
   | Buy_xtz_wrapper of unit
   | Redeem_xtz_wrapper of nat
@@ -252,9 +261,9 @@ type fa2_token_sender =
 
 
 
-# 5 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 5 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./multi_asset/ligo/src/../fa2/fa2_errors.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/fa2_errors.mligo" 1
 
 
 
@@ -305,9 +314,9 @@ let fa2_sender_hook_undefined = "FA2_SENDER_HOOK_UNDEFINED"
 
 
 
-# 6 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 6 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 1
 (** 
 Reference implementation of the FA2 operator storage, config API and 
 helper functions 
@@ -317,7 +326,7 @@ helper functions
 
 
 
-# 1 "./multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 1
 (**
 Helper function to convert FA2 entrypoints input parameters between their
 Michelson and internal LIGO representation.
@@ -331,7 +340,7 @@ tools.
 
 
 
-# 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
 
 
 
@@ -580,7 +589,16 @@ tools.
 
 
 
-# 14 "./multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 2
+
+
+
+
+
+
+
+
+
+# 14 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 2
 
 let permissions_descriptor_to_michelson (d : permissions_descriptor)
     : permissions_descriptor_michelson =
@@ -736,11 +754,9 @@ let token_metas_to_michelson (ms : token_metadata list) : token_metadata_michels
     ) ms
 
 
-# 10 "./multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
+# 10 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
 
-# 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_errors.mligo" 1
-
-
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/../fa2_errors.mligo" 1
 
 
 
@@ -789,7 +805,9 @@ let token_metas_to_michelson (ms : token_metadata list) : token_metadata_michels
 
 
 
-# 11 "./multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
+
+
+# 11 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
 
 (** 
 (owner, operator, token_id) -> unit
@@ -891,7 +909,7 @@ let validate_operator (tx_policy, txs, ops_storage
 
 
 
-# 7 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 7 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 (* (owner,token_id) -> balance *)
 type ledger = ((address * token_id), nat) big_map
@@ -913,7 +931,7 @@ type multi_token_storage = {
 }
 
 
-# 1 "./multi_asset/ligo/src/../fa2/mint_tokens.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/mint_tokens.mligo" 1
 
 type token_extras = (string, string) map
 
@@ -949,9 +967,9 @@ let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
         
 
 
-# 28 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 28 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./multi_asset/ligo/src/../fa2/burn_tokens.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/burn_tokens.mligo" 1
 let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_token_storage =
     let token_id = params.0 in
     let token_amount = params.1 in
@@ -991,13 +1009,13 @@ let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_tok
                         token_total_supply = Big_map.update token_id (Some (current_supply)) s.token_total_supply }
 
 
-# 29 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 29 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./multi_asset/ligo/src/../fa2/remote_exchange.mligo" 1
+# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/remote_exchange.mligo" 1
 (* Creates a new order in the remote exchange *)
 let set_on_exchange ((params, s): order_book_entry * multi_token_storage): operation * multi_token_storage = 
     (* Verifies the user has enough funds *)
-    let token_balance: nat = match Big_map.find_opt (Tezos.sender, params.token_amount_to_sell) s.ledger with
+    let token_balance: nat = match Big_map.find_opt (Tezos.sender, params.token_id_to_sell) s.ledger with
         | None -> (failwith "NO_ACCOUNT": nat)
         | Some b -> b in
     if token_balance < params.total_token_amount
@@ -1014,7 +1032,11 @@ let set_on_exchange ((params, s): order_book_entry * multi_token_storage): opera
         op, s
 
 (* Fulfill an order from the remote exchange *)
-let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): operation = 
+let buy_from_exchange ((params, s): buy_params * multi_token_storage): operation = 
+    (* Fetches buyer's balance for the given token *)
+    let buyer_balance = match Big_map.find_opt (Tezos.sender, params.token_from) s.ledger with
+        | None -> (failwith "NO_BALANCE": nat)
+        | Some b -> b in
     (* Prepares operation to be sent to the exchange *)
     let contract: order_params contract = 
         match ((Tezos.get_entrypoint_opt "%fulfill_order" s.exchange_address): order_params contract option) with
@@ -1022,9 +1044,10 @@ let buy_from_exchange ((params, s): (order_id * nat) * multi_token_storage): ope
             | Some c -> c in
     (* Creates the new transaction *)
     let buy_order: order_params = {
-        order_id = params.0;
-        amount_to_buy = params.1;
+        order_id = params.order_id;
+        amount_to_buy = params.amount;
         buyer = Tezos.sender;
+        buyer_balance = buyer_balance;
     } in
 
     Tezos.transaction buy_order 0mutez contract
@@ -1141,7 +1164,7 @@ let redeem_xtz_wrapper ((xtz_amount, s): nat * multi_token_storage): operation *
     (op, { s with 
         ledger = new_ledger; 
         token_total_supply = Big_map.update wrapper_id (Some (new_token_total_supply)) s.token_total_supply })
-# 30 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 30 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 let get_balance_amt (key, ledger : (address * nat) * ledger) : nat =
   let bal_opt = Big_map.find_opt key ledger in

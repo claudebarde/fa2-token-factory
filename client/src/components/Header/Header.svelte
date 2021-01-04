@@ -5,7 +5,6 @@
   import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
   import { BeaconWallet } from "@taquito/beacon-wallet";
   import { NetworkType } from "@airgap/beacon-sdk";
-  import { ThanosWallet } from "@thanos-wallet/dapp";
   import BigNumber from "bignumber.js";
   import { Token, UserToken } from "../../types";
 
@@ -20,11 +19,11 @@
     // retrieves user's balances after wallet connection
     const balancePromises: Promise<BigNumber>[] = [];
 
-    tokens.forEach(token => {
+    tokens.forEach((token) => {
       balancePromises.push(
         $store.ledgerStorage.ledger.get({
           owner: address,
-          token_id: token.tokenID
+          token_id: token.tokenID,
         })
       );
     });
@@ -32,11 +31,11 @@
     const balances = await Promise.all(balancePromises);
     const userTokens: UserToken[] = [];
     balances.forEach((b, i) => {
-      const balance = b.toNumber();
+      const balance = b ? b.toNumber() : 0;
       if (balance > 0) {
         userTokens.push({
-          ...$store.tokens.filter(tk => tk.tokenID === i + 1)[0],
-          balance: balance
+          ...$store.tokens.filter((tk) => tk.tokenID === i + 1)[0],
+          balance: balance,
         });
       }
     });
@@ -49,19 +48,75 @@
     const userAddress = await wallet.getPKH();
     store.updateWallet(wallet);
     store.updateUserAddress(userAddress);
+    store.updateWalletType("tezbridge");
     $store.Tezos.setWalletProvider(wallet);
+    await setUserTokens(userAddress);
   };
 
-  const initBeaconWallet = async () => {
+  const initBeacon = async () => {
+    const wallet = new BeaconWallet({
+      name: "Tezos Token Factory",
+      eventHandlers: {
+        /*PAIR_INIT: {
+          handler: async (data) => {
+            console.log("pair init:", data);
+          },
+        },*/
+        PERMISSION_REQUEST_SENT: {
+          handler: async (data) => {
+            console.log("permission request success:", data);
+          },
+        },
+        PERMISSION_REQUEST_SUCCESS: {
+          handler: async (data) => {
+            console.log("permission request success:", data);
+          },
+        },
+        OPERATION_REQUEST_SENT: {
+          handler: async (data) => {
+            console.log("permission request success:", data);
+          },
+        },
+        OPERATION_REQUEST_SUCCESS: {
+          handler: async (data) => {
+            console.log("permission request success:", data);
+          },
+        },
+      },
+    });
+    await wallet.client.init();
+    await wallet.requestPermissions({
+      network: { type: NetworkType.DELPHINET },
+    });
+    const userAddress = await wallet.getPKH();
+    store.updateWallet(wallet);
+    store.updateWalletType("beacon");
+    store.updateUserAddress(userAddress);
+    $store.Tezos.setWalletProvider(wallet);
+    await setUserTokens(userAddress);
+  };
+
+  /*const initBeaconWallet = async () => {
     const wallet = new BeaconWallet({ name: "Tezos Token Factory" });
     await wallet.requestPermissions({ network: { type: NetworkType.CUSTOM } });
     const userAddress = await wallet.getPKH();
     store.updateWallet(wallet);
+    store.updateWalletType("beacon");
     store.updateUserAddress(userAddress);
     $store.Tezos.setWalletProvider(wallet);
+  };*/
+
+  const disconnectWallet = () => {
+    if ($store.walletType === "beacon") {
+      ($store.wallet as BeaconWallet).client.destroy();
+    }
+    store.updateWallet(undefined);
+    store.updateWalletType(undefined);
+    store.updateUserAddress(undefined);
+    $store.Tezos.setWalletProvider(undefined);
   };
 
-  const initThanosWallet = async () => {
+  /*const initThanosWallet = async () => {
     if (await ThanosWallet.isAvailable()) {
       const wallet = new ThanosWallet("Tezos Token Factory");
       await wallet.connect("sandbox", { forcePermission: true });
@@ -71,7 +126,7 @@
       $store.Tezos.setWalletProvider(wallet);
       setUserTokens(userAddress);
     }
-  };
+  };*/
 
   onMount(async () => {
     const Tezos = new TezosToolkit(rpcAddress);
@@ -103,6 +158,10 @@
       }
       console.log("Tokens:", tokens);
       store.updateTokens(tokens);
+    }
+
+    if ($store.userAddress) {
+      await setUserTokens($store.userAddress);
     }
   });
 </script>
@@ -255,8 +314,9 @@
           <span>Wallet</span>
           <div class="wallet-menu" id="connect-wallet">
             <p on:click={initTezbridgeWallet}>TezBridge</p>
-            <p on:click={initBeaconWallet}>Beacon</p>
-            <p on:click={initThanosWallet}>Thanos</p>
+            <p on:click={initBeacon}>Other</p>
+            <!--<p on:click={initBeaconWallet}>Beacon</p>
+            <p on:click={initBeacon}>Thanos</p>-->
           </div>
         {:else}
           <img
@@ -271,6 +331,7 @@
                 rel="noopener noreferrer">Connected as
                 {`${$store.userAddress.slice(0, 5)}...${$store.userAddress.slice(-5)}`}</a>
             </p>
+            <p on:click={disconnectWallet}>Disconnect wallet</p>
             {#each $store.userTokens as token}
               <p>
                 {token.symbol}

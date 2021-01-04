@@ -2,12 +2,12 @@ import { writable } from "svelte/store";
 import { TezosToolkit, ContractAbstraction, Wallet } from "@taquito/taquito";
 import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
 import { BeaconWallet } from "@taquito/beacon-wallet";
-import { ThanosWallet } from "@thanos-wallet/dapp";
-import { Token, UserToken } from "./types";
+import { Token, UserToken, WalletType } from "./types";
 
 interface State {
   Tezos: TezosToolkit;
-  wallet: TezBridgeWallet | BeaconWallet | ThanosWallet;
+  wallet: TezBridgeWallet | BeaconWallet;
+  walletType: WalletType;
   userAddress: string | undefined;
   network: "mainnet" | "testnet" | "local";
   ledgerAddress: { mainnet: string; testnet: string; local: string };
@@ -23,17 +23,18 @@ interface State {
 const initialState: State = {
   Tezos: undefined,
   wallet: undefined,
+  walletType: undefined,
   userAddress: undefined,
   network: process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
-    testnet: "KT1DkGxeQKBjVQXpTzEzkrFWEZgxYcXEFYxZ",
-    local: "KT1CCj7pKNN8r3CupsV6iBqpGfVrFvid9SL6"
+    testnet: "KT1JbALUVvUEJyC4Cqwrnryc7RPK7mKBkqMa",
+    local: "KT1B6eferViERCASDTDQ7EipABmxVxwxb74v"
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1PiomgGFtHUtwPvyPWpLscV71HLxRdCkAv",
-    local: "KT19P5g2yM1HmHzw7FHYAEiydn46LTNe9po8"
+    testnet: "KT1FrFQRjqkHVf9uUzV55fBGQ2m1Qb9vZFQ6",
+    local: "KT1DmfRxuyge29ck8p9XeYnWhvXwmZcenVnT"
   },
   ledgerInstance: undefined,
   ledgerStorage: undefined,
@@ -49,8 +50,10 @@ const state = {
   subscribe: store.subscribe,
   updateTezos: (tezos: TezosToolkit) =>
     store.update(store => ({ ...store, Tezos: tezos })),
-  updateWallet: (wallet: TezBridgeWallet | BeaconWallet | ThanosWallet) =>
+  updateWallet: (wallet: TezBridgeWallet | BeaconWallet) =>
     store.update(store => ({ ...store, wallet })),
+  updateWalletType: (walletType: WalletType) =>
+    store.update(store => ({ ...store, walletType })),
   updateUserAddress: (address: string) => {
     store.update(store => ({ ...store, userAddress: address }));
   },

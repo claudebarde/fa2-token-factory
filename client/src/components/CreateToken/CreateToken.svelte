@@ -1,5 +1,7 @@
 <script lang="ts">
   import store from "../../store";
+  import { push } from "svelte-spa-router";
+  import { Token } from "../../types";
 
   let name = "";
   let symbol = "";
@@ -10,6 +12,7 @@
   let emailAddress = "";
   let username = "";
   let inputError = false;
+  let loading = false;
 
   const createNewToken = async () => {
     if (
@@ -22,6 +25,7 @@
       !isNaN(+decimals)
     ) {
       inputError = false;
+      loading = true;
       // sends details to smart contract
       try {
         const tokenID = +$store.ledgerStorage.last_token_id + 1;
@@ -36,11 +40,49 @@
           .send();
         console.log(tokenID, op.opHash);
         await op.confirmation();
+        // updates the token list
+        let newToken: Token = {
+          tokenID,
+          name,
+          symbol,
+          admin: $store.userAddress,
+          decimals: +decimals,
+          totalSupply: +totalSupply,
+          extras: {},
+        };
+        if (iconURL) {
+          newToken.extras.iconURL = iconURL;
+        }
+        if (website) {
+          newToken.extras.website = website;
+        }
+        if (emailAddress) {
+          newToken.extras.emailAddress = emailAddress;
+        }
+        if (username) {
+          newToken.extras.username = username;
+        }
+
+        store.updateTokens([...$store.tokens, newToken]);
+        // resets the UI
+        name = "";
+        symbol = "";
+        totalSupply = "";
+        decimals = "0";
+        iconURL = "";
+        website = "";
+        emailAddress = "";
+        username = "";
+        // navigates to token page
+        push(`/token/${tokenID}`);
       } catch (error) {
         console.error(error);
+      } finally {
+        loading = false;
       }
     } else {
       inputError = true;
+      loading = false;
       console.log("missing value");
     }
   };
@@ -126,8 +168,16 @@
         </div>
         <div class="card-buttons">
           {#if $store.userAddress}
-            <button on:click={createNewToken}>Confirm</button>
-          {:else}<button disabled>Please connect your wallet</button>{/if}
+            {#if loading}
+              <button class="button" disabled>
+                <span>Confirming...</span><span class="spinner" />
+              </button>
+            {:else}
+              <button class="button" on:click={createNewToken}>Confirm</button>
+            {/if}
+          {:else}
+            <button class="button" disabled>Please connect your wallet</button>
+          {/if}
         </div>
       </div>
     </div>

@@ -32,6 +32,7 @@ type order_params =
     order_id: order_id;
     amount_to_buy: nat;
     buyer: address;
+    buyer_balance: nat; (* balance of token to be exchanged for the target token *)
 }
 
 type delete_order_params =
