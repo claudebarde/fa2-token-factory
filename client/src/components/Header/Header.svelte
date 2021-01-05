@@ -312,10 +312,12 @@
         {#if $store.userAddress === undefined}
           <span>Wallet</span>
           <div class="wallet-menu" id="connect-wallet">
-            <p on:click={initTezbridgeWallet}>TezBridge</p>
-            <p on:click={initBeacon}>Other</p>
-            <!--<p on:click={initBeaconWallet}>Beacon</p>
-            <p on:click={initBeacon}>Thanos</p>-->
+            {#if process.env.NODE_ENV === 'development'}
+              <p on:click={initTezbridgeWallet}>TezBridge</p>
+            {/if}
+            <p on:click={initBeacon}>
+              {process.env.NODE_ENV === 'development' ? 'Other' : 'Connect'}
+            </p>
           </div>
         {:else}
           <img
