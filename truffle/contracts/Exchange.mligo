@@ -3,6 +3,18 @@ type token_id = nat
 
 type order_type = Buy | Sell
 
+type order_book_entry_param = 
+[@layout:comb]
+{ 
+  order_type: order_type;
+  token_id_to_sell: token_id;
+  token_amount_to_sell: nat;
+  token_id_to_buy: token_id;
+  token_amount_to_buy: nat;
+  total_token_amount: nat; (* total amount of token to sell *)
+  seller: address;
+}
+
 type order_book_entry = 
 [@layout:comb]
 { 
@@ -13,6 +25,7 @@ type order_book_entry =
   token_amount_to_buy: nat;
   total_token_amount: nat; (* total amount of token to sell *)
   seller: address;
+  created_on: timestamp
 }
 
 type storage =
@@ -53,18 +66,28 @@ type confirm_buy_params =
 }
 
 type entrypoints =
-| Create_new_order of order_book_entry
+| Create_new_order of order_book_entry_param
 | Fulfill_order of order_params
 | Delete_order of order_id
 | Update_ledger_address of address
 
 (* Creates a new order *)
-let create_new_order (new_order, s: order_book_entry * storage): return = 
+let create_new_order (new_order, s: order_book_entry_param * storage): return = 
     let new_order_id = s.last_order_id + 1n in
+    let order: order_book_entry = { 
+        order_type = new_order.order_type;
+        token_id_to_sell = new_order.token_id_to_sell;
+        token_amount_to_sell = new_order.token_amount_to_sell;
+        token_id_to_buy = new_order.token_id_to_buy;
+        token_amount_to_buy = new_order.token_amount_to_buy;
+        total_token_amount = new_order.total_token_amount;
+        seller = new_order.seller;
+        created_on = Tezos.now;
+    } in
 
     ([]: operation list), 
     { s with 
-        order_book = Big_map.add new_order_id new_order s.order_book; 
+        order_book = Big_map.add new_order_id order s.order_book; 
         last_order_id = new_order_id }
 
 (* Fulfills an existing order *)

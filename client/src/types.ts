@@ -13,6 +13,8 @@ export interface UserToken extends Token {
 }
 
 export interface OrderEntry {
+  order_id: number;
+  created_on: string;
   order_type: "buy" | "sell";
   token_id_to_sell: number;
   token_amount_to_sell: number;
@@ -22,7 +24,7 @@ export interface OrderEntry {
   seller: string;
 }
 
-export type ModalType = "confirmWTKbuy" | "confirmNewOrder";
+export type ModalType = "confirmWTKbuy" | "confirmNewOrder" | "deleteOrder";
 
 export type WalletType =
   | "tezbridge"

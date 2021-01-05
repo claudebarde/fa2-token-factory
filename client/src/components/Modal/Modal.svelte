@@ -126,6 +126,8 @@
             </p>
           {/await}
           <p>Confirm this new order?</p>
+        {:else if modalType === 'deleteOrder'}
+          <p>Would you like to delete the order number {payload}?</p>
         {:else}This is an empty modal{/if}
       </div>
       <div class="modal__footer">

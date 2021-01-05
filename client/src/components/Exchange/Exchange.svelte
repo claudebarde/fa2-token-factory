@@ -12,19 +12,52 @@
   let buyWTK: string = "";
   let loadingBuyWtk = false;
   let loadingConfirmNewOrder = false;
+  let loadingDeleteOrder = false;
   let openBuyWtkModal = false;
   let openConfirmNewOrder = false;
+  let openDeleteOrder = false;
+  let orderToDelete = 0;
 
   const displayMaxAmount = (tokenID: number): string => {
     const token = $store.userTokens.filter(
       (tk) => tk.tokenID === tokenToSell
     )[0];
     if (token) {
-      const balance = token.balance / 10 ** token.decimals;
+      console.log("token balance:", token.balance);
+      const balance = token.balance / 10 ** +token.decimals;
 
       return "Max: " + balance.toString();
     } else {
       return "";
+    }
+  };
+
+  const formatCreatedOn = (timestamp: string): string => {
+    const date = new Date(timestamp);
+
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+  };
+
+  const getTokenSymbol = (tokenID: number): string => {
+    if ($store.tokens.length === 0) return "N/A";
+
+    const token = $store.tokens.filter((tk) => tk.tokenID === tokenID);
+    if (token.length === 0) return "N/A";
+    if (!token[0].symbol) return "N/A";
+
+    return token[0].symbol;
+  };
+
+  const colorBalance = (tokenID: number, amount: number): string => {
+    if (!$store.userAddress) return "";
+
+    const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID);
+    if (token.length === 0) return "color:red";
+
+    if (token[0].balance / 10 ** +token[0].decimals < amount) {
+      return "color:red";
+    } else {
+      return "color:green";
     }
   };
 
@@ -109,7 +142,8 @@
       tokenToBuy > 0 &&
       tokenToSell > 0 &&
       !isNaN(+tokenToSellAmount) &&
-      !isNaN(+tokenToBuyAmount)
+      !isNaN(+tokenToBuyAmount) &&
+      tokenToBuy !== tokenToSell
     ) {
       openConfirmNewOrder = false;
       loadingConfirmNewOrder = true;
@@ -129,12 +163,26 @@
           .send();
         console.log(op.opHash);
         await op.confirmation();
+        // updates the local exchange storage
+        const newStorage: any = await $store.exchangeInstance.storage();
+        // adds new order to local order book
+        const order: OrderEntry = {
+          order_id: newStorage.last_order_id.toNumber(),
+          created_on: new Date(Date.now()).toISOString(),
+          order_type: "buy",
+          token_id_to_sell: tokenToSell,
+          token_amount_to_sell: +tokenToSellAmount,
+          token_id_to_buy: tokenToBuy,
+          token_amount_to_buy: +tokenToBuyAmount,
+          total_token_amount: +tokenToSellAmount,
+          seller: $store.userAddress,
+        };
+        orderBook = [...orderBook, order];
         // clears UI
         tokenToBuy = 0;
         tokenToSell = 0;
         tokenToSellAmount = "";
         tokenToBuyAmount = "";
-        // adds new order to local order book
       } catch (error) {
         console.log(error);
       } finally {
@@ -143,14 +191,93 @@
     }
   };
 
+  const fulfillOrder = async (orderID: number): Promise<void> => {
+    console.log(orderID);
+  };
+
+  const deleteOrder = async (): Promise<void> => {
+    loadingDeleteOrder = true;
+    openDeleteOrder = false;
+
+    try {
+      const op = await $store.exchangeInstance.methods
+        .delete_order(orderToDelete)
+        .send();
+      console.log(op.opHash);
+      await op.confirmation();
+      // removes order from local order book
+      orderBook = [
+        ...orderBook.filter((ord) => ord.order_id !== orderToDelete),
+      ];
+    } catch (error) {
+      console.log(error);
+    } finally {
+      loadingDeleteOrder = false;
+      orderToDelete = 0;
+    }
+  };
+
   onMount(async () => {
-    const exchangeBookId = $store.exchangeStorage.order_book.id.toNumber();
-    const url = `https://api.better-call.dev/v1/bigmap/${
-      $store.network === "testnet" ? "delphinet" : $store.network
-    }/${exchangeBookId}/keys`;
-    const response = await fetch(url);
-    const data = await response.json();
-    console.log(data);
+    if ($store.network === "local") {
+      const orderPromises: Promise<any>[] = [];
+      for (
+        let i = 1;
+        i <= $store.exchangeStorage.last_order_id.toNumber();
+        i++
+      ) {
+        orderPromises.push($store.exchangeStorage.order_book.get(i.toString()));
+      }
+      const orders = await Promise.all(orderPromises);
+      console.log(orders.filter((o) => o));
+      if (orders.length > 0) {
+        orders
+          .filter((o) => o)
+          .forEach((ord, i) => {
+            const order: OrderEntry = {
+              ...ord,
+              order_id: i + 1,
+              token_amount_to_buy: ord.token_amount_to_buy.toNumber(),
+              token_amount_to_sell: ord.token_amount_to_sell.toNumber(),
+              token_id_to_buy: ord.token_id_to_buy.toNumber(),
+              token_id_to_sell: ord.token_id_to_sell.toNumber(),
+              total_token_amount: ord.total_token_amount.toNumber(),
+            };
+            orderBook = [...orderBook, order];
+          });
+      }
+    } else {
+      const exchangeBookId = $store.exchangeStorage.order_book.id.toNumber();
+      const url = `https://api.better-call.dev/v1/bigmap/${
+        $store.network === "testnet" ? "delphinet" : $store.network
+      }/${exchangeBookId}/keys`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const orderPromises: Promise<any>[] = [];
+        data.forEach((ord) => {
+          orderPromises.push(
+            $store.exchangeStorage.order_book.get(ord.data.key_string)
+          );
+        });
+        const orders = await Promise.all(orderPromises);
+        if (orders.length > 0) {
+          orders
+            .filter((o) => o)
+            .forEach((ord, i) => {
+              const order: OrderEntry = {
+                ...ord,
+                order_id: +data[i].data.key_string,
+                token_amount_to_buy: ord.token_amount_to_buy.toNumber(),
+                token_amount_to_sell: ord.token_amount_to_sell.toNumber(),
+                token_id_to_buy: ord.token_id_to_buy.toNumber(),
+                token_id_to_sell: ord.token_id_to_sell.toNumber(),
+                total_token_amount: ord.total_token_amount.toNumber(),
+              };
+              orderBook = [...orderBook, order];
+            });
+        }
+      }
+    }
   });
 </script>
 
@@ -168,7 +295,7 @@
       padding: 50px;
       background-color: #edf2f7;
       border-top: solid 3px #a0aec0;
-      height: 100%;
+      height: 85%;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -217,16 +344,36 @@
 
       .exchange-grid {
         display: grid;
-        grid-template-columns: 10% 35% 35% 20%;
+        grid-template-columns: 10% 15% 15% 15% 20% 20%;
         grid-template-rows: auto;
         align-items: center;
         width: 90%;
         background-color: white;
-        border-radius: 5px;
 
         div {
           padding: 20px 15px;
         }
+
+        &.header {
+          border-top-left-radius: 5px;
+          border-top-right-radius: 5px;
+        }
+
+        &.orders {
+          width: 100%;
+        }
+
+        &.orders:nth-child(2n) {
+          background-color: lighten(#edf2f7, 3);
+        }
+      }
+
+      .orders-wrapper {
+        display: grid;
+        overflow: auto;
+        width: 90%;
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
       }
     }
   }
@@ -261,7 +408,7 @@
         <div>Sell:</div>
         <div class="dropdown">
           <div class="dropdown-title">
-            {!tokenToSell ? 'Select' : $store.tokens.filter((tk) => tk.tokenID === tokenToSell)[0].symbol}
+            {!tokenToSell ? 'Select' : getTokenSymbol(tokenToSell)}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
@@ -284,7 +431,7 @@
         <div>Buy:</div>
         <div class="dropdown">
           <div class="dropdown-title">
-            {!tokenToBuy ? 'Select' : $store.tokens.filter((tk) => tk.tokenID === tokenToBuy)[0].symbol}
+            {!tokenToBuy ? 'Select' : getTokenSymbol(tokenToBuy)}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
@@ -311,27 +458,53 @@
         </div>
       </div>
     </div>
-    <div class="exchange-grid">
+    <div class="exchange-grid header">
       <div>Order ID</div>
+      <div>Created On</div>
       <div>Selling</div>
       <div>Buying</div>
       <div>Creator</div>
+      <div />
+    </div>
+    <div class="orders-wrapper">
       {#each orderBook as order}
-        <div>{order.order_type}</div>
-        <div>
-          {order.token_id_to_sell}
-          {order.token_amount_to_sell * order.total_token_amount}
+        <div class="exchange-grid orders">
+          <div>{order.order_id}</div>
+          <div>{formatCreatedOn(order.created_on)}</div>
+          <div>
+            <span>{order.token_amount_to_sell.toLocaleString('en-US')}
+              {getTokenSymbol(order.token_id_to_sell)}</span>
+          </div>
+          <div>
+            <span
+              style={$store.userAddress ? colorBalance(order.token_id_to_buy, order.token_amount_to_buy) : ''}>{order.token_amount_to_buy.toLocaleString('en-US')}
+              {getTokenSymbol(order.token_id_to_buy)}</span>
+          </div>
+          <div>{order.seller.slice(0, 7) + '...' + order.seller.slice(-7)}</div>
+          <div>
+            {#if $store.userAddress && $store.userAddress === order.seller}
+              {#if loadingDeleteOrder && orderToDelete === order.order_id}
+                <button class="button red">
+                  <span>Deleting...</span><span class="spinner" />
+                </button>
+              {:else}
+                <button
+                  class="button red"
+                  on:click={() => {
+                    openDeleteOrder = true;
+                    orderToDelete = order.order_id;
+                  }}>
+                  <span>Delete</span></button>
+              {/if}
+            {:else}
+              <button
+                class="button green"
+                on:click={() => fulfillOrder(order.order_id)}>Fulfill</button>
+            {/if}
+          </div>
         </div>
-        <div>
-          {order.token_id_to_buy}
-          {order.token_amount_to_buy * order.total_token_amount}
-        </div>
-        <div>{order.seller}</div>
       {:else}
-        <div />
-        <div />
         <div>No order yet!</div>
-        <div />
       {/each}
     </div>
   </section>
@@ -347,3 +520,12 @@
   open={openConfirmNewOrder}
   close={() => (openConfirmNewOrder = false)}
   confirm={confirmNewOrder} />
+<Modal
+  modalType="deleteOrder"
+  payload={orderToDelete}
+  open={openDeleteOrder}
+  close={() => {
+    openDeleteOrder = false;
+    orderToDelete = 0;
+  }}
+  confirm={deleteOrder} />

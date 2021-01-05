@@ -84,7 +84,6 @@
         },
       },
     });
-    await wallet.client.init();
     await wallet.requestPermissions({
       network: { type: NetworkType.DELPHINET },
     });
@@ -333,9 +332,10 @@
             </p>
             <p on:click={disconnectWallet}>Disconnect wallet</p>
             {#each $store.userTokens as token}
-              <p>
-                {token.symbol}
-                {Math.round(token.balance / 10 ** token.decimals).toLocaleString('en-US')}
+              <p style="font-size:0.8rem">
+                <a href={`#/token/${token.tokenID}`}>{token.symbol}
+                  balance:
+                  {Math.round(token.balance / 10 ** token.decimals).toLocaleString('en-US')}</a>
               </p>
             {/each}
           </div>

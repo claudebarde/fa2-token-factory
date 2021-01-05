@@ -25,16 +25,16 @@ const initialState: State = {
   wallet: undefined,
   walletType: undefined,
   userAddress: undefined,
-  network: process.env.NODE_ENV === "development" ? "local" : "testnet",
+  network: "testnet", //process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
     testnet: "KT1JbALUVvUEJyC4Cqwrnryc7RPK7mKBkqMa",
-    local: "KT1B6eferViERCASDTDQ7EipABmxVxwxb74v"
+    local: "KT1HCTmt3U4aXcTSw5zx8kEejWRpQssT674Y"
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1FrFQRjqkHVf9uUzV55fBGQ2m1Qb9vZFQ6",
-    local: "KT1DmfRxuyge29ck8p9XeYnWhvXwmZcenVnT"
+    testnet: "KT1VRpPL19GQiKbaVqrDwqkQ3ojN7rDvLr9g", //"KT1FrFQRjqkHVf9uUzV55fBGQ2m1Qb9vZFQ6",
+    local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,
   ledgerStorage: undefined,
