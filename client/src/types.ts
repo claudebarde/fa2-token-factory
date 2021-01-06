@@ -24,7 +24,11 @@ export interface OrderEntry {
   seller: string;
 }
 
-export type ModalType = "confirmWTKbuy" | "confirmNewOrder" | "deleteOrder";
+export type ModalType =
+  | "confirmWTKbuy"
+  | "confirmWTKredeem"
+  | "confirmNewOrder"
+  | "deleteOrder";
 
 export type WalletType =
   | "tezbridge"

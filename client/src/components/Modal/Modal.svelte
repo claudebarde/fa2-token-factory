@@ -128,6 +128,8 @@
           <p>Confirm this new order?</p>
         {:else if modalType === 'deleteOrder'}
           <p>Would you like to delete the order number {payload}?</p>
+        {:else if modalType === 'confirmWTKredeem'}
+          <p>Would you like to redeem {payload} wTK for {payload} XTZ?</p>
         {:else}This is an empty modal{/if}
       </div>
       <div class="modal__footer">

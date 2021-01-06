@@ -337,7 +337,7 @@
               <p style="font-size:0.8rem">
                 <a href={`#/token/${token.tokenID}`}>{token.symbol}
                   balance:
-                  {Math.round(token.balance / 10 ** token.decimals).toLocaleString('en-US')}</a>
+                  {(+(token.balance / 10 ** token.decimals)).toLocaleString('en-US')}</a>
               </p>
             {/each}
           </div>

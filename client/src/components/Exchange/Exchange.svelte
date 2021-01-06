@@ -10,20 +10,20 @@
   let tokenToSell: number = 0;
   let tokenToSellAmount: string = "";
   let buyWTK: string = "";
+  let redeemWTK: string = "";
   let loadingBuyWtk = false;
+  let loadingRedeemWtk = false;
   let loadingConfirmNewOrder = false;
   let loadingDeleteOrder = false;
   let openBuyWtkModal = false;
+  let openRedeemWtkModal = false;
   let openConfirmNewOrder = false;
   let openDeleteOrder = false;
   let orderToDelete = 0;
 
   const displayMaxAmount = (tokenID: number): string => {
-    const token = $store.userTokens.filter(
-      (tk) => tk.tokenID === tokenToSell
-    )[0];
+    const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID)[0];
     if (token) {
-      console.log("token balance:", token.balance);
       const balance = token.balance / 10 ** +token.decimals;
 
       return "Max: " + balance.toString();
@@ -120,6 +120,44 @@
         console.log(error);
       } finally {
         loadingBuyWtk = false;
+      }
+    }
+  };
+
+  const redeemXtzWrapper = async () => {
+    if (+redeemWTK > 0) {
+      openRedeemWtkModal = true;
+    }
+  };
+
+  const confirmRedeemXtzWrapper = async () => {
+    openRedeemWtkModal = false;
+    if (+redeemWTK > 0) {
+      loadingRedeemWtk = true;
+
+      try {
+        const op = await $store.ledgerInstance.methods
+          .redeem_xtz_wrapper(+redeemWTK * 10 ** 6)
+          .send();
+        console.log(op.opHash);
+        await op.confirmation();
+        // updates user's local balance
+        const tokens = $store.userTokens.map((tk) => {
+          if (tk.tokenID === 1) {
+            return {
+              ...tk,
+              balance: tk.balance - +redeemWTK * 10 ** +tk.decimals,
+            };
+          } else {
+            return tk;
+          }
+        });
+        store.updateUserTokens(tokens);
+        redeemWTK = "";
+      } catch (error) {
+        console.log(error);
+      } finally {
+        loadingRedeemWtk = false;
       }
     }
   };
@@ -314,14 +352,19 @@
         background-color: #ebf8ff;
       }
 
-      .buy-wtk {
+      .wtk-actions {
+        display: flex;
+        justify-content: space-between;
         width: 90%;
         background-color: white;
         border-radius: 5px;
         margin: 0px 0px 20px 0px;
 
-        & > div {
-          padding: 20px 15px;
+        .buy-wtk,
+        .redeem-wtk {
+          & > div {
+            padding: 20px 15px;
+          }
         }
       }
 
@@ -384,22 +427,45 @@
     <h1>Exchange tokens</h1>
   </section>
   <section class="body">
-    <div class="buy-wtk">
-      <div><strong>Buy wTK</strong></div>
-      <div>
-        Amount:
-        <input type="text" bind:value={buyWTK} />&nbsp;
-        {#if !$store.userAddress}
-          <button class="button disabled" disabled>Connect your wallet</button>
-        {:else if loadingBuyWtk}
-          <button class="button blue" disabled>
-            <span>Buying...</span><span class="spinner" />
-          </button>
-        {:else}
-          <button class="button blue" on:click={buyXtzWrapper}>
-            <span>Buy</span>
-          </button>
-        {/if}
+    <div class="wtk-actions">
+      <div class="buy-wtk">
+        <div><strong>Buy wTK</strong></div>
+        <div>
+          Amount:
+          <input type="text" bind:value={buyWTK} />&nbsp;
+          {#if !$store.userAddress}
+            <button class="button disabled" disabled>Connect your wallet</button>
+          {:else if loadingBuyWtk}
+            <button class="button blue" disabled>
+              <span>Buying...</span><span class="spinner" />
+            </button>
+          {:else}
+            <button class="button blue" on:click={buyXtzWrapper}>
+              <span>Buy</span>
+            </button>
+          {/if}
+        </div>
+      </div>
+      <div class="redeem-wtk">
+        <div><strong>Redeem wTK</strong></div>
+        <div>
+          Amount:
+          <input
+            type="text"
+            bind:value={redeemWTK}
+            placeholder={$store.userAddress ? displayMaxAmount(1) : ''} />&nbsp;
+          {#if !$store.userAddress}
+            <button class="button disabled" disabled>Connect your wallet</button>
+          {:else if loadingRedeemWtk}
+            <button class="button blue" disabled>
+              <span>Redeeming...</span><span class="spinner" />
+            </button>
+          {:else}
+            <button class="button blue" on:click={redeemXtzWrapper}>
+              <span>Redeem</span>
+            </button>
+          {/if}
+        </div>
       </div>
     </div>
     <div class="new-order">
@@ -504,7 +570,10 @@
           </div>
         </div>
       {:else}
-        <div>No order yet!</div>
+        <div
+          style="width:100%;text-align:center;padding: 20px;background-color:white">
+          No order yet!
+        </div>
       {/each}
     </div>
   </section>
@@ -514,6 +583,12 @@
   open={openBuyWtkModal}
   close={() => (openBuyWtkModal = false)}
   confirm={confirmBuyXtzWrapper} />
+<Modal
+  modalType="confirmWTKredeem"
+  payload={redeemWTK}
+  open={openRedeemWtkModal}
+  close={() => (openRedeemWtkModal = false)}
+  confirm={confirmRedeemXtzWrapper} />
 <Modal
   modalType="confirmNewOrder"
   payload={{ tokenToBuy, tokenToBuyAmount, tokenToSell, tokenToSellAmount }}
