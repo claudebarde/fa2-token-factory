@@ -2,7 +2,7 @@ import { writable } from "svelte/store";
 import { TezosToolkit, ContractAbstraction, Wallet } from "@taquito/taquito";
 import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
 import { BeaconWallet } from "@taquito/beacon-wallet";
-import { Token, UserToken, WalletType } from "./types";
+import { Token, UserToken, WalletType, OrderEntry } from "./types";
 
 interface State {
   Tezos: TezosToolkit;
@@ -18,6 +18,7 @@ interface State {
   exchangeStorage: any;
   tokens: Token[];
   userTokens: UserToken[];
+  orderBook: OrderEntry[];
 }
 
 const initialState: State = {
@@ -33,7 +34,7 @@ const initialState: State = {
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1VRpPL19GQiKbaVqrDwqkQ3ojN7rDvLr9g", //"KT1FrFQRjqkHVf9uUzV55fBGQ2m1Qb9vZFQ6",
+    testnet: "KT1VRpPL19GQiKbaVqrDwqkQ3ojN7rDvLr9g",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,
@@ -41,7 +42,8 @@ const initialState: State = {
   exchangeInstance: undefined,
   exchangeStorage: undefined,
   tokens: [],
-  userTokens: []
+  userTokens: [],
+  orderBook: []
 };
 
 const store = writable(initialState);
@@ -92,6 +94,9 @@ const state = {
   },
   updateUserTokens: (tokens: UserToken[]) => {
     store.update(store => ({ ...store, userTokens: tokens }));
+  },
+  updateOrderBook: (orders: OrderEntry[]) => {
+    store.update(store => ({ ...store, orderBook: orders }));
   }
 };
 

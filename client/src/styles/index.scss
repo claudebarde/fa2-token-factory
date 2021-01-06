@@ -237,3 +237,29 @@ $dropdown-min-width: 70px;
     }
   }
 }
+
+.exchange-grid {
+  display: grid;
+  grid-template-columns: 10% 15% 15% 15% 20% 20%;
+  grid-template-rows: auto;
+  align-items: center;
+  width: 90%;
+  background-color: white;
+
+  div {
+    padding: 20px 15px;
+  }
+
+  &.header {
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+  }
+
+  &.orders {
+    width: 100%;
+  }
+
+  &.orders:nth-child(2n) {
+    background-color: lighten(#edf2f7, 3);
+  }
+}

@@ -130,6 +130,20 @@
           <p>Would you like to delete the order number {payload}?</p>
         {:else if modalType === 'confirmWTKredeem'}
           <p>Would you like to redeem {payload} wTK for {payload} XTZ?</p>
+        {:else if modalType === 'fulfillOrder'}
+          {#if payload}
+            <p>
+              Are you sure you want to confirm
+              <br />the exchange of
+              {payload.token_amount_to_buy}
+              {$store.tokens.filter((tk) => tk.tokenID === payload.token_id_to_buy)[0].symbol}
+              for
+              {payload.token_amount_to_sell}
+              {$store.tokens.filter((tk) => tk.tokenID === payload.token_id_to_sell)[0].symbol}?
+            </p>
+          {:else}
+            <p>No order ID provided</p>
+          {/if}
         {:else}This is an empty modal{/if}
       </div>
       <div class="modal__footer">

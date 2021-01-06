@@ -1036,7 +1036,11 @@ let buy_from_exchange ((params, s): buy_params * multi_token_storage): operation
     (* Fetches buyer's balance for the given token *)
     let buyer_balance = match Big_map.find_opt (Tezos.sender, params.token_from) s.ledger with
         | None -> (failwith "NO_BALANCE": nat)
-        | Some b -> b in
+        | Some b -> 
+            if params.amount < b
+            then (failwith "INSUFFICIENT_BALANCE": nat)
+            else
+             b in
     (* Prepares operation to be sent to the exchange *)
     let contract: order_params contract = 
         match ((Tezos.get_entrypoint_opt "%fulfill_order" s.exchange_address): order_params contract option) with

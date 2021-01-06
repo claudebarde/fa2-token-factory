@@ -3,8 +3,8 @@
   import store from "../../store";
   import { OrderEntry, Token } from "../../types";
   import Modal from "../Modal/Modal.svelte";
+  import Order from "./Order.svelte";
 
-  let orderBook: OrderEntry[] = [];
   let tokenToBuy: number = 0;
   let tokenToBuyAmount: string = "";
   let tokenToSell: number = 0;
@@ -14,12 +14,11 @@
   let loadingBuyWtk = false;
   let loadingRedeemWtk = false;
   let loadingConfirmNewOrder = false;
-  let loadingDeleteOrder = false;
   let openBuyWtkModal = false;
   let openRedeemWtkModal = false;
   let openConfirmNewOrder = false;
   let openDeleteOrder = false;
-  let orderToDelete = 0;
+  let openFulfillOrder = false;
 
   const displayMaxAmount = (tokenID: number): string => {
     const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID)[0];
@@ -32,12 +31,6 @@
     }
   };
 
-  const formatCreatedOn = (timestamp: string): string => {
-    const date = new Date(timestamp);
-
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-  };
-
   const getTokenSymbol = (tokenID: number): string => {
     if ($store.tokens.length === 0) return "N/A";
 
@@ -46,19 +39,6 @@
     if (!token[0].symbol) return "N/A";
 
     return token[0].symbol;
-  };
-
-  const colorBalance = (tokenID: number, amount: number): string => {
-    if (!$store.userAddress) return "";
-
-    const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID);
-    if (token.length === 0) return "color:red";
-
-    if (token[0].balance / 10 ** +token[0].decimals < amount) {
-      return "color:red";
-    } else {
-      return "color:green";
-    }
   };
 
   const buyXtzWrapper = () => {
@@ -186,16 +166,31 @@
       openConfirmNewOrder = false;
       loadingConfirmNewOrder = true;
 
+      const tokenToBuyDecimals = $store.tokens.filter(
+        (tk) => tk.tokenID === tokenToBuy
+      )[0].decimals;
+      const tokenToSellDecimals = $store.tokens.filter(
+        (tk) => tk.tokenID === tokenToSell
+      )[0].decimals;
+
       try {
         const op = await $store.ledgerInstance.methods
           .new_exchange_order(
+            /*"buy",
+            [["unit"]],
+            tokenToSell.toString(),
+            (+tokenToSellAmount * 10 ** tokenToSellDecimals).toString(),
+            tokenToBuy.toString(),
+            (+tokenToBuyAmount * 10 ** tokenToBuyDecimals).toString(),
+            (+tokenToSellAmount * 10 ** tokenToSellDecimals).toString(),
+            $store.userAddress*/
             "buy",
             [["unit"]],
             tokenToSell.toString(),
-            tokenToSellAmount,
+            +tokenToSellAmount * 10 ** tokenToSellDecimals,
             tokenToBuy.toString(),
-            tokenToBuyAmount,
-            tokenToSellAmount,
+            +tokenToBuyAmount * 10 ** tokenToBuyDecimals,
+            +tokenToSellAmount * 10 ** tokenToSellDecimals,
             $store.userAddress
           )
           .send();
@@ -215,7 +210,7 @@
           total_token_amount: +tokenToSellAmount,
           seller: $store.userAddress,
         };
-        orderBook = [...orderBook, order];
+        store.updateOrderBook([order, ...$store.orderBook]);
         // clears UI
         tokenToBuy = 0;
         tokenToSell = 0;
@@ -229,29 +224,39 @@
     }
   };
 
-  const fulfillOrder = async (orderID: number): Promise<void> => {
-    console.log(orderID);
-  };
-
-  const deleteOrder = async (): Promise<void> => {
-    loadingDeleteOrder = true;
-    openDeleteOrder = false;
-
-    try {
-      const op = await $store.exchangeInstance.methods
-        .delete_order(orderToDelete)
-        .send();
-      console.log(op.opHash);
-      await op.confirmation();
-      // removes order from local order book
-      orderBook = [
-        ...orderBook.filter((ord) => ord.order_id !== orderToDelete),
-      ];
-    } catch (error) {
-      console.log(error);
-    } finally {
-      loadingDeleteOrder = false;
-      orderToDelete = 0;
+  const fetchExchangeOrders = async () => {
+    const exchangeBookId = $store.exchangeStorage.order_book.id.toNumber();
+    const url = `https://api.better-call.dev/v1/bigmap/${
+      $store.network === "testnet" ? "delphinet" : $store.network
+    }/${exchangeBookId}/keys`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data && data.length > 0) {
+      const orderPromises: Promise<any>[] = [];
+      // removes entries that were deleted
+      const filteredData = data.filter((d) => d.data.value);
+      filteredData.forEach((ord) => {
+        orderPromises.push(
+          $store.exchangeStorage.order_book.get(ord.data.key_string)
+        );
+      });
+      const orders = await Promise.all(orderPromises);
+      if (orders.length > 0) {
+        orders
+          .filter((o) => o)
+          .forEach((ord, i) => {
+            const order: OrderEntry = {
+              ...ord,
+              order_id: +filteredData[i].data.key_string,
+              token_amount_to_buy: ord.token_amount_to_buy.toNumber(),
+              token_amount_to_sell: ord.token_amount_to_sell.toNumber(),
+              token_id_to_buy: ord.token_id_to_buy.toNumber(),
+              token_id_to_sell: ord.token_id_to_sell.toNumber(),
+              total_token_amount: ord.total_token_amount.toNumber(),
+            };
+            store.updateOrderBook([order, ...$store.orderBook]);
+          });
+      }
     }
   };
 
@@ -280,40 +285,14 @@
               token_id_to_sell: ord.token_id_to_sell.toNumber(),
               total_token_amount: ord.total_token_amount.toNumber(),
             };
-            orderBook = [...orderBook, order];
+            store.updateOrderBook([order, ...$store.orderBook]);
           });
       }
     } else {
-      const exchangeBookId = $store.exchangeStorage.order_book.id.toNumber();
-      const url = `https://api.better-call.dev/v1/bigmap/${
-        $store.network === "testnet" ? "delphinet" : $store.network
-      }/${exchangeBookId}/keys`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data && data.length > 0) {
-        const orderPromises: Promise<any>[] = [];
-        data.forEach((ord) => {
-          orderPromises.push(
-            $store.exchangeStorage.order_book.get(ord.data.key_string)
-          );
-        });
-        const orders = await Promise.all(orderPromises);
-        if (orders.length > 0) {
-          orders
-            .filter((o) => o)
-            .forEach((ord, i) => {
-              const order: OrderEntry = {
-                ...ord,
-                order_id: +data[i].data.key_string,
-                token_amount_to_buy: ord.token_amount_to_buy.toNumber(),
-                token_amount_to_sell: ord.token_amount_to_sell.toNumber(),
-                token_id_to_buy: ord.token_id_to_buy.toNumber(),
-                token_id_to_sell: ord.token_id_to_sell.toNumber(),
-                total_token_amount: ord.total_token_amount.toNumber(),
-              };
-              orderBook = [...orderBook, order];
-            });
-        }
+      if ($store.orderBook && $store.exchangeStorage) {
+        await fetchExchangeOrders();
+      } else {
+        setTimeout(fetchExchangeOrders, 2000);
       }
     }
   });
@@ -382,32 +361,6 @@
           display: flex;
           justify-content: space-between;
           align-items: center;
-        }
-      }
-
-      .exchange-grid {
-        display: grid;
-        grid-template-columns: 10% 15% 15% 15% 20% 20%;
-        grid-template-rows: auto;
-        align-items: center;
-        width: 90%;
-        background-color: white;
-
-        div {
-          padding: 20px 15px;
-        }
-
-        &.header {
-          border-top-left-radius: 5px;
-          border-top-right-radius: 5px;
-        }
-
-        &.orders {
-          width: 100%;
-        }
-
-        &.orders:nth-child(2n) {
-          background-color: lighten(#edf2f7, 3);
         }
       }
 
@@ -533,42 +486,8 @@
       <div />
     </div>
     <div class="orders-wrapper">
-      {#each orderBook as order}
-        <div class="exchange-grid orders">
-          <div>{order.order_id}</div>
-          <div>{formatCreatedOn(order.created_on)}</div>
-          <div>
-            <span>{order.token_amount_to_sell.toLocaleString('en-US')}
-              {getTokenSymbol(order.token_id_to_sell)}</span>
-          </div>
-          <div>
-            <span
-              style={$store.userAddress ? colorBalance(order.token_id_to_buy, order.token_amount_to_buy) : ''}>{order.token_amount_to_buy.toLocaleString('en-US')}
-              {getTokenSymbol(order.token_id_to_buy)}</span>
-          </div>
-          <div>{order.seller.slice(0, 7) + '...' + order.seller.slice(-7)}</div>
-          <div>
-            {#if $store.userAddress && $store.userAddress === order.seller}
-              {#if loadingDeleteOrder && orderToDelete === order.order_id}
-                <button class="button red">
-                  <span>Deleting...</span><span class="spinner" />
-                </button>
-              {:else}
-                <button
-                  class="button red"
-                  on:click={() => {
-                    openDeleteOrder = true;
-                    orderToDelete = order.order_id;
-                  }}>
-                  <span>Delete</span></button>
-              {/if}
-            {:else}
-              <button
-                class="button green"
-                on:click={() => fulfillOrder(order.order_id)}>Fulfill</button>
-            {/if}
-          </div>
-        </div>
+      {#each $store.orderBook as order}
+        <Order {order} {getTokenSymbol} {openDeleteOrder} {openFulfillOrder} />
       {:else}
         <div
           style="width:100%;text-align:center;padding: 20px;background-color:white">
@@ -595,12 +514,3 @@
   open={openConfirmNewOrder}
   close={() => (openConfirmNewOrder = false)}
   confirm={confirmNewOrder} />
-<Modal
-  modalType="deleteOrder"
-  payload={orderToDelete}
-  open={openDeleteOrder}
-  close={() => {
-    openDeleteOrder = false;
-    orderToDelete = 0;
-  }}
-  confirm={deleteOrder} />
