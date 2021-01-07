@@ -208,10 +208,10 @@
           created_on: new Date(Date.now()).toISOString(),
           order_type: "buy",
           token_id_to_sell: tokenToSell,
-          token_amount_to_sell: +tokenToSellAmount,
+          token_amount_to_sell: +tokenToSellAmount * 10 ** tokenToSellDecimals,
           token_id_to_buy: tokenToBuy,
-          token_amount_to_buy: +tokenToBuyAmount,
-          total_token_amount: +tokenToSellAmount,
+          token_amount_to_buy: +tokenToBuyAmount * 10 ** tokenToBuyDecimals,
+          total_token_amount: +tokenToSellAmount * 10 ** tokenToSellDecimals,
           seller: $store.userAddress,
         };
         store.updateOrderBook([order, ...$store.orderBook]);

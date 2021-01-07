@@ -34,7 +34,7 @@ const initialState: State = {
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1PDpXy2mvru5fE4VoGYSv35XZzTNC7bQqn",
+    testnet: "KT1GzvNGwD9YtFp2NAY6tnUUjVnsH2cMiK8v",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,

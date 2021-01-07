@@ -21,7 +21,7 @@
     const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID);
     if (token.length === 0) return false;
 
-    if (token[0].balance / 10 ** +token[0].decimals < amount) {
+    if (token[0].balance < amount) {
       return false;
     } else {
       return true;
@@ -42,7 +42,7 @@
             .buy_from_exchange(
               order.order_id,
               order.token_id_to_buy,
-              order.token_amount_to_sell
+              order.token_amount_to_buy
             )
             .send();
           await op.confirmation();
