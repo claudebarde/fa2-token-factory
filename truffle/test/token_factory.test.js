@@ -420,7 +420,7 @@ contract("FA2 Fungible Token Factory", () => {
 
     try {
       const op = await fa2_instance.methods
-        .buy_from_exchange(orderId, order.token_id_to_sell, amountToBuy)
+        .buy_from_exchange(orderId, order.token_id_to_buy, amountToBuy)
         .send();
       await op.confirmation();
     } catch (error) {

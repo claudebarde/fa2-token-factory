@@ -127,7 +127,7 @@ type buy_params =
 [@layout:comb]
 {
   order_id: order_id;
-  token_from: token_id;
+  token_to_buy: token_id;
   amount: nat;
 }
 
@@ -1034,10 +1034,10 @@ let set_on_exchange ((params, s): order_book_entry * multi_token_storage): opera
 (* Fulfill an order from the remote exchange *)
 let buy_from_exchange ((params, s): buy_params * multi_token_storage): operation = 
     (* Fetches buyer's balance for the given token *)
-    let buyer_balance = match Big_map.find_opt (Tezos.sender, params.token_from) s.ledger with
+    let buyer_balance = match Big_map.find_opt (Tezos.sender, params.token_to_buy) s.ledger with
         | None -> (failwith "NO_BALANCE": nat)
         | Some b -> 
-            if params.amount < b
+            if b < params.amount
             then (failwith "INSUFFICIENT_BALANCE": nat)
             else
              b in

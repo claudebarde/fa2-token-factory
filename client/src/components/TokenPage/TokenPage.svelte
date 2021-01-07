@@ -3,6 +3,7 @@
   import store from "../../store";
   import TokenInfo from "./TokenInfo.svelte";
   import { Token } from "../../types";
+  import { displayTokenAmount } from "../../utils";
 
   export let params;
 
@@ -13,12 +14,12 @@
       if (isNaN(params.id)) {
         // token symbol provided
         paramToken = $store.tokens.filter(
-          token => token.symbol === params.id
+          (token) => token.symbol === params.id
         )[0];
       } else {
         // token id provided
         paramToken = $store.tokens.filter(
-          token => token.tokenID === +params.id
+          (token) => token.tokenID === +params.id
         )[0];
       }
     }
@@ -118,7 +119,7 @@
           <div class="param-token__symbol">Symbol: {paramToken.symbol}</div>
           <div class="param-token__total-supply">
             Total Supply:
-            {(paramToken.totalSupply / 10 ** paramToken.decimals).toLocaleString('en-US')}
+            {displayTokenAmount(paramToken.tokenID, paramToken.totalSupply).toLocaleString('en-US')}
             tokens
           </div>
           <div class="param-token__admin">
@@ -133,7 +134,7 @@
           {#if $store.userAddress}
             {#await $store.ledgerStorage.ledger.get({
               owner: $store.userAddress,
-              token_id: paramToken.tokenID
+              token_id: paramToken.tokenID,
             })}
               <div class="param-token__balance">Fetching your balance...</div>
               <div class="param-token__buttons">
@@ -144,9 +145,9 @@
                 Your balance:
                 {#if paramToken.symbol === 'wTK'}
                   wꜩ
-                  {(balance / 10 ** paramToken.decimals).toLocaleString('en-US')}
+                  {displayTokenAmount(paramToken.tokenID, balance).toLocaleString('en-US')}
                 {:else}
-                  {(balance / 10 ** paramToken.decimals).toLocaleString('en-US')}
+                  {displayTokenAmount(paramToken.tokenID, balance).toLocaleString('en-US')}
                 {/if}
               </div>
               <div class="param-token__buttons">

@@ -2,6 +2,7 @@
   import store from "../../store";
   import { UserToken } from "../../types";
   import Modal from "../Modal/Modal.svelte";
+  import { displayTokenAmount } from "../../utils";
 
   export let order, getTokenSymbol, openDeleteOrder, openFulfillOrder;
 
@@ -12,19 +13,6 @@
     const date = new Date(timestamp);
 
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-  };
-
-  const displayTokenDecimals = (
-    tokenID: number,
-    amount: number
-  ): number | string => {
-    if ($store.tokens.length === 0) return "N/A";
-
-    const token = $store.tokens.filter((tk) => tk.tokenID === tokenID);
-    if (token.length === 0) return "N/A";
-    if (token[0].decimals === undefined) return "N/A";
-
-    return amount / 10 ** token[0].decimals;
   };
 
   const availableBalance = (tokenID: number, amount: number): boolean => {
@@ -135,13 +123,13 @@
   <div>{order.order_id}</div>
   <div>{formatCreatedOn(order.created_on)}</div>
   <div>
-    <span>{displayTokenDecimals(order.token_id_to_sell, order.token_amount_to_sell).toLocaleString('en-US')}
+    <span>{displayTokenAmount(order.token_id_to_sell, order.token_amount_to_sell).toLocaleString('en-US')}
       {getTokenSymbol(order.token_id_to_sell)}</span>
   </div>
   <div>
     <span
       style={$store.userAddress ? (availableBalance(order.token_id_to_buy, order.token_amount_to_buy) ? 'color:green' : 'color:red') : ''}>
-      {displayTokenDecimals(order.token_id_to_buy, order.token_amount_to_buy).toLocaleString('en-US')}
+      {displayTokenAmount(order.token_id_to_buy, order.token_amount_to_buy).toLocaleString('en-US')}
       {getTokenSymbol(order.token_id_to_buy)}</span>
   </div>
   <div>{order.seller.slice(0, 7) + '...' + order.seller.slice(-7)}</div>
@@ -167,7 +155,9 @@
       <button
         class={`button ${$store.userAddress ? (availableBalance(order.token_id_to_buy, order.token_amount_to_buy) ? 'green' : 'red') : ''}`}
         on:click={() => {
-          openFulfillOrder = true;
+          if ($store.userAddress) {
+            openFulfillOrder = true;
+          }
         }}>Fulfill</button>
     {/if}
   </div>

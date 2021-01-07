@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import store from "../../store";
-  import { OrderEntry, Token } from "../../types";
+  import { OrderEntry, UserToken } from "../../types";
   import Modal from "../Modal/Modal.svelte";
   import Order from "./Order.svelte";
+  import { displayTokenAmount } from "../../utils";
 
   let tokenToBuy: number = 0;
   let tokenToBuyAmount: string = "";
@@ -23,7 +24,7 @@
   const displayMaxAmount = (tokenID: number): string => {
     const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID)[0];
     if (token) {
-      const balance = token.balance / 10 ** +token.decimals;
+      const balance = displayTokenAmount(token.tokenID, token.balance);
 
       return "Max: " + balance.toString();
     } else {
@@ -60,41 +61,44 @@
         const newStorage: any = await $store.ledgerInstance.storage();
         store.updateLedgerStorage(newStorage);
         // update the token info
-        const newToken = await store.formatToken(1, newStorage);
-        if (newToken) {
-          const newTokens: Token[] = [
-            newToken,
-            ...$store.tokens.filter((token) => token.tokenID !== 1),
-          ];
-          store.updateTokens(newTokens);
-        }
-        // updates user's displayed balance
-        if ($store.userTokens.filter((tk) => tk.tokenID === 1).length === 1) {
-          // user previously had wTK tokens
-          const newTokens = $store.userTokens.map((tk) => {
+        store.updateTokens([
+          ...$store.tokens.map((tk) => {
             if (tk.tokenID === 1) {
               return {
                 ...tk,
-                balance: tk.balance + +buyWTK * 10 ** tk.decimals,
+                totalSupply: tk.totalSupply + +buyWTK * 10 ** 6,
+              };
+            } else {
+              return tk;
+            }
+          }),
+        ]);
+        // updates user's displayed balance
+        let tokens: UserToken[];
+        const token = $store.userTokens.filter((tk) => tk.tokenID === 1);
+        if (token.length === 0) {
+          // the user didn't have any wTK before
+          tokens = [
+            ...$store.userTokens,
+            {
+              ...$store.tokens.filter((tk) => tk.tokenID === 1)[0],
+              balance: +buyWTK * 10 ** 6,
+            },
+          ];
+        } else {
+          // the user already had some wTK
+          tokens = $store.userTokens.map((tk) => {
+            if (tk.tokenID === 1) {
+              return {
+                ...tk,
+                balance: tk.balance + +buyWTK * 10 ** 6,
               };
             } else {
               return tk;
             }
           });
-
-          store.updateUserTokens(newTokens);
-        } else {
-          // user bought wTK tokens for the first time
-          const newTokens = [
-            ...$store.userTokens,
-            {
-              ...$store.tokens.filter((tk) => tk.tokenID === 1)[0],
-              balance: +buyWTK,
-            },
-          ];
-
-          store.updateUserTokens(newTokens);
         }
+        store.updateUserTokens(tokens);
         buyWTK = "";
       } catch (error) {
         console.log(error);
@@ -499,6 +503,7 @@
 </main>
 <Modal
   modalType="confirmWTKbuy"
+  payload={buyWTK}
   open={openBuyWtkModal}
   close={() => (openBuyWtkModal = false)}
   confirm={confirmBuyXtzWrapper} />

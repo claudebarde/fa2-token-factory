@@ -29,12 +29,12 @@ const initialState: State = {
   network: "testnet", //process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
-    testnet: "KT1JbALUVvUEJyC4Cqwrnryc7RPK7mKBkqMa",
+    testnet: "KT1F3KRQ6z5xq9cDyisSE2AzUKL1JC4SwcXh",
     local: "KT1HCTmt3U4aXcTSw5zx8kEejWRpQssT674Y"
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1VRpPL19GQiKbaVqrDwqkQ3ojN7rDvLr9g",
+    testnet: "KT1PDpXy2mvru5fE4VoGYSv35XZzTNC7bQqn",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,

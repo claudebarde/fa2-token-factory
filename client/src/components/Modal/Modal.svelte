@@ -2,6 +2,7 @@
   import { fly, fade } from "svelte/transition";
   import { ModalType } from "../../types";
   import store from "../../store";
+  import { displayTokenAmount } from "../../utils";
 
   export let modalType: ModalType;
   export let open = false;
@@ -109,7 +110,7 @@
       <div class="modal__close" on:click={close}><span>&#10006;</span></div>
       <div class="modal__body">
         {#if modalType === 'confirmWTKbuy'}
-          <p>Confirm new wTK buy?</p>
+          <p>Would you like to buy {payload} wTK tokens?</p>
         {:else if modalType === 'confirmNewOrder'}
           <p>
             You are about to create a new exchange order with the following
@@ -135,10 +136,10 @@
             <p>
               Are you sure you want to confirm
               <br />the exchange of
-              {payload.token_amount_to_buy}
+              {displayTokenAmount(payload.token_id_to_buy, payload.token_amount_to_buy)}
               {$store.tokens.filter((tk) => tk.tokenID === payload.token_id_to_buy)[0].symbol}
               for
-              {payload.token_amount_to_sell}
+              {displayTokenAmount(payload.token_id_to_sell, payload.token_amount_to_sell)}
               {$store.tokens.filter((tk) => tk.tokenID === payload.token_id_to_sell)[0].symbol}?
             </p>
           {:else}

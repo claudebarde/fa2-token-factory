@@ -1,5 +1,7 @@
 <script lang="ts">
   import store from "../../store";
+  import { displayTokenAmount } from "../../utils";
+
   export let token;
 
   let open = false;
@@ -57,16 +59,16 @@
 <div class="token-totalsupply">
   {#if token.symbol === 'wTK'}
     wꜩ
-    {(token.totalSupply / 10 ** token.decimals).toLocaleString('en-US')}
+    {displayTokenAmount(token.tokenID, token.totalSupply).toLocaleString('en-US')}
   {:else}
-    {(token.totalSupply / 10 ** token.decimals).toLocaleString('en-US')}
+    {displayTokenAmount(token.tokenID, token.totalSupply).toLocaleString('en-US')}
   {/if}
 </div>
 <div class="token-admin">
   <a
     href={`https://${$store.network === 'local' || $store.network === 'testnet' ? 'carthage.' : ''}tzkt.io/${token.admin}`}
     target="_blank"
-    rel="noopener noreferrer">
+    rel="noopener noreferrer nofollow">
     {`${token.admin.slice(0, 10)}...${token.admin.slice(-10)}`}
   </a>
 </div>

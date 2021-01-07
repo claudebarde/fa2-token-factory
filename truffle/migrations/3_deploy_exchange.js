@@ -3,7 +3,7 @@ const { MichelsonMap } = require("@taquito/taquito");
 const { alice } = require("../scripts/sandbox/accounts");
 const faucet = require("../faucet");
 
-const admin = faucet.pkh; //alice.pkh;
+const admin = faucet.pkh; // alice.pkh;
 
 const initialStorage = {
   last_order_id: 0,

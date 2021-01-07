@@ -7,6 +7,7 @@
   import { NetworkType } from "@airgap/beacon-sdk";
   import BigNumber from "bignumber.js";
   import { Token, UserToken } from "../../types";
+  import { displayTokenAmount } from "../../utils";
 
   const rpcAddress =
     $store.network === "local"
@@ -337,7 +338,7 @@
               <p style="font-size:0.8rem">
                 <a href={`#/token/${token.tokenID}`}>{token.symbol}
                   balance:
-                  {(+(token.balance / 10 ** token.decimals)).toLocaleString('en-US')}</a>
+                  {(+displayTokenAmount(token.tokenID, token.balance)).toLocaleString('en-US')}</a>
               </p>
             {/each}
           </div>

@@ -3,7 +3,7 @@ const { MichelsonMap } = require("@taquito/taquito");
 const { alice } = require("../scripts/sandbox/accounts");
 const faucet = require("../faucet");
 
-const admin = alice.pkh; //faucet.pkh;
+const admin = faucet.pkh; // alice.pkh;
 
 const wrapperId = 1;
 const ledger = new MichelsonMap();
