@@ -1,9 +1,9 @@
-# 1 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo"
+# 1 "./multi_asset/ligo/src/fa2_multi_token.mligo"
 
 
 
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/fa2_interface.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/fa2_interface.mligo" 1
 
 
 
@@ -79,7 +79,9 @@ type update_operator_aux =
 
 type update_operator_michelson = update_operator_aux michelson_or_right_comb
 
-type token_metadata = {
+(*type token_metadata = 
+[@layout:comb]
+{
   token_id : token_id;
   admin : address;
   symbol : string;
@@ -88,23 +90,21 @@ type token_metadata = {
   extras : (string, string) map;
 }
 
-type token_metadata_michelson = token_metadata michelson_pair_right_comb
-
-type token_metadata_param = {
+type token_metadata_param = 
+[@layout:comb]
+{
   token_ids : token_id list;
-  handler : (token_metadata_michelson list) -> unit;
-}
-
-type token_metadata_param_michelson = token_metadata_param michelson_pair_right_comb
+  handler : (token_metadata list) -> unit;
+}*)
 
 type mint_tokens_params = 
 [@layout:comb]
 {
-    symbol: string;
-    name: string;
-    decimals: nat;
+    symbol: bytes;
+    name: bytes;
+    decimals: bytes;
     total_supply: nat;
-    extras : (string * string) list;
+    authors: bytes;
 }
 
 type order_type = Buy | Sell
@@ -165,8 +165,8 @@ type fa2_entry_points =
   | Update_exchange_address of address
 
 
-type fa2_token_metadata =
-  | Token_metadata of token_metadata_param_michelson
+(*type fa2_token_metadata =
+  | Token_metadata of token_metadata_param*)
 
 (* permission policy definition *)
 
@@ -261,9 +261,9 @@ type fa2_token_sender =
 
 
 
-# 5 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 5 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/fa2_errors.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/fa2_errors.mligo" 1
 
 
 
@@ -314,9 +314,9 @@ let fa2_sender_hook_undefined = "FA2_SENDER_HOOK_UNDEFINED"
 
 
 
-# 6 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 6 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 1
 (** 
 Reference implementation of the FA2 operator storage, config API and 
 helper functions 
@@ -326,7 +326,7 @@ helper functions
 
 
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 1
 (**
 Helper function to convert FA2 entrypoints input parameters between their
 Michelson and internal LIGO representation.
@@ -340,7 +340,7 @@ tools.
 
 
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
 
 
 
@@ -598,7 +598,7 @@ tools.
 
 
 
-# 14 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 2
+# 14 "./multi_asset/ligo/src/../fa2/lib/fa2_convertors.mligo" 2
 
 let permissions_descriptor_to_michelson (d : permissions_descriptor)
     : permissions_descriptor_michelson =
@@ -746,17 +746,10 @@ let balance_of_response_from_michelson (rm : balance_of_response_michelson) : ba
     balance = aux.balance;
   }
 
-let token_metas_to_michelson (ms : token_metadata list) : token_metadata_michelson list =
-  List.map
-    ( fun (m : token_metadata) ->
-      let mm : token_metadata_michelson = Layout.convert_to_right_comb m in
-      mm
-    ) ms
 
+# 10 "./multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
 
-# 10 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
-
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/../fa2_errors.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_errors.mligo" 1
 
 
 
@@ -807,7 +800,7 @@ let token_metas_to_michelson (ms : token_metadata list) : token_metadata_michels
 
 
 
-# 11 "./smart-contracts/multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
+# 11 "./multi_asset/ligo/src/../fa2/lib/fa2_operator_lib.mligo" 2
 
 (** 
 (owner, operator, token_id) -> unit
@@ -909,7 +902,7 @@ let validate_operator (tx_policy, txs, ops_storage
 
 
 
-# 7 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 7 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 (* (owner,token_id) -> balance *)
 type ledger = ((address * token_id), nat) big_map
@@ -918,41 +911,35 @@ type ledger = ((address * token_id), nat) big_map
 type token_total_supply = (token_id, nat) big_map
 
 (* token_id -> token_metadata *)
-type token_metadata_storage = (token_id, token_metadata_michelson) big_map
+type token_metadata_storage = (token_id, (token_id * (string, bytes) map)) big_map
 
 type multi_token_storage = {
   ledger : ledger;
   operators : operator_storage;
   token_total_supply : token_total_supply;
   token_metadata : token_metadata_storage;
+  token_admins: (token_id, address) big_map;
   exchange_address: address;
   admin: address;
   last_token_id: token_id;
+  metadata: (string, bytes) big_map;
 }
 
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/mint_tokens.mligo" 1
-
-type token_extras = (string, string) map
+# 1 "./multi_asset/ligo/src/../fa2/mint_tokens.mligo" 1
 
 let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
-    (* Creates new metadata *)
-    let make_extras (extras, data: token_extras * (string * string)): token_extras =
-        Map.add data.0 data.1 extras in
     (* Creates new token id *)
     let new_token_id: token_id = s.last_token_id + 1n in
-    let metadata: token_metadata = {
-        token_id = new_token_id;
-        admin = Tezos.sender;
-        symbol = p.symbol;
-        name = p.name;
-        decimals = p.decimals;
-        extras = List.fold make_extras p.extras (Map.empty: token_extras);
-    } in
-    let token_metadata_michelson: token_metadata_michelson = 
-        Layout.convert_to_right_comb (metadata: token_metadata) in
-    let new_token_metadata: token_metadata_storage = 
-        Big_map.add new_token_id token_metadata_michelson s.token_metadata in
+    (* Creates token metadata *)
+    let token_metadata_map: (string, bytes) map = Map.literal [
+        ("name", p.name);
+        ("symbol", p.symbol);
+        ("decimals", p.decimals);
+        ("authors", p.authors);
+    ] in
+    let new_token_metadata: token_metadata_storage =
+        Big_map.add new_token_id (new_token_id, token_metadata_map) s.token_metadata in
     (* Creates new token total supply *)
     let total_supply: token_total_supply = 
         Big_map.add new_token_id p.total_supply s.token_total_supply in
@@ -963,55 +950,55 @@ let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
     { s with ledger = new_ledger; 
             token_total_supply = total_supply; 
             token_metadata = new_token_metadata;
+            token_admins = Big_map.add new_token_id Tezos.sender s.token_admins;
             last_token_id = new_token_id; }
         
 
 
-# 28 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 30 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/burn_tokens.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/burn_tokens.mligo" 1
 let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_token_storage =
     let token_id = params.0 in
     let token_amount = params.1 in
-    (* Gets token metadata *)
-    let metadata_michelson: token_metadata_michelson = 
-        match Big_map.find_opt token_id s.token_metadata with
-        | Some mtdt -> mtdt
-        | None -> (failwith "NO_TOKEN_FOUND": token_metadata_michelson) in
-    let metadata: token_metadata = Layout.convert_from_right_comb metadata_michelson in
     (* Only admin is allowed to burn tokens *)
-    if Tezos.sender <> metadata.admin
-    then (failwith "UNAUTHORIZDED_ACTION": multi_token_storage)
+    let admin: address = 
+        match Big_map.find_opt token_id s.token_admins with
+        | None -> (failwith "NO_TOKEN_FOUND": address)
+        | Some a -> 
+            if a <> Tezos.sender
+            then (failwith "UNAUTHORIZED_ACTION": address)
+            else   
+                a in    
+    (* Verifies the admin as the right amount of token *)
+    let admin_balance: nat = 
+        match Big_map.find_opt (Tezos.sender, token_id) s.ledger with
+        | None -> (failwith "NO_BALANCE_FOUND": nat)
+        | Some blc -> blc in
+    if admin_balance < token_amount
+    then (failwith "INSUFFICIENT_BALANCE": multi_token_storage)
     else
-        (* Verifies the admin as the right amount of token *)
-        let admin_balance: nat = 
-            match Big_map.find_opt (Tezos.sender, token_id) s.ledger with
-            | None -> (failwith "NO_BALANCE_FOUND": nat)
-            | Some blc -> blc in
-        if admin_balance < token_amount
-        then (failwith "INSUFFICIENT_BALANCE": multi_token_storage)
+        (* Deducts the tokens to burn from admin's balance *)
+        let new_balance: nat = abs (admin_balance - token_amount) in
+        (* Updates the ledger *)
+        let new_ledger = Big_map.update (Tezos.sender, token_id) (Some (new_balance)) s.ledger in
+        (* Deducts the token to burn from the total supply *)
+        let current_supply: nat = 
+            match Big_map.find_opt token_id s.token_total_supply with
+            | None -> (failwith "NO_TOTAL_SUPPLY_FOUND": nat)
+            | Some supply -> supply in
+        if current_supply < token_amount
+        then (failwith "INSUFFICIENT_TOTAL_SUPPLY": multi_token_storage)
         else
-            (* Deducts the tokens to burn from admin's balance *)
-            let new_balance: nat = abs (admin_balance - token_amount) in
-            (* Updates the ledger *)
-            let new_ledger = Big_map.update (Tezos.sender, token_id) (Some (new_balance)) s.ledger in
-            (* Deducts the token to burn from the total supply *)
-            let current_supply: nat = 
-                match Big_map.find_opt token_id s.token_total_supply with
-                | None -> (failwith "NO_TOTAL_SUPPLY_FOUND": nat)
-                | Some supply -> supply in
-            if current_supply < token_amount
-            then (failwith "INSUFFICIENT_TOTAL_SUPPLY": multi_token_storage)
-            else
-                let new_total_supply: nat = abs (current_supply - token_amount) in
-                (* returns the new storage *)
-                { s with ledger = new_ledger; 
-                        token_total_supply = Big_map.update token_id (Some (current_supply)) s.token_total_supply }
+            let new_total_supply: nat = abs (current_supply - token_amount) in
+            (* returns the new storage *)
+            { s with ledger = new_ledger; 
+                    token_total_supply = Big_map.update token_id (Some (current_supply)) s.token_total_supply }
 
 
-# 29 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 31 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
-# 1 "./smart-contracts/multi_asset/ligo/src/../fa2/remote_exchange.mligo" 1
+# 1 "./multi_asset/ligo/src/../fa2/remote_exchange.mligo" 1
 (* Creates a new order in the remote exchange *)
 let set_on_exchange ((params, s): order_book_entry * multi_token_storage): operation * multi_token_storage = 
     (* Verifies the user has enough funds *)
@@ -1168,7 +1155,7 @@ let redeem_xtz_wrapper ((xtz_amount, s): nat * multi_token_storage): operation *
     (op, { s with 
         ledger = new_ledger; 
         token_total_supply = Big_map.update wrapper_id (Some (new_token_total_supply)) s.token_total_supply })
-# 30 "./smart-contracts/multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 32 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 let get_balance_amt (key, ledger : (address * nat) * ledger) : nat =
   let bal_opt = Big_map.find_opt key ledger in

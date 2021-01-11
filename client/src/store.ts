@@ -3,6 +3,7 @@ import { TezosToolkit, ContractAbstraction, Wallet } from "@taquito/taquito";
 import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
 import { BeaconWallet } from "@taquito/beacon-wallet";
 import { Token, UserToken, WalletType, OrderEntry } from "./types";
+import { bytes2Char } from "@taquito/tzip16";
 
 interface State {
   Tezos: TezosToolkit;
@@ -29,12 +30,12 @@ const initialState: State = {
   network: "testnet", //process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
-    testnet: "KT1F3KRQ6z5xq9cDyisSE2AzUKL1JC4SwcXh",
+    testnet: "KT1PGjQQ5nb2mcbi5ahyfVMn27F7tAfHt4Xq",
     local: "KT1HCTmt3U4aXcTSw5zx8kEejWRpQssT674Y"
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1GzvNGwD9YtFp2NAY6tnUUjVnsH2cMiK8v",
+    testnet: "KT1ME5SR9gBvZUWiE8d2ruHZAp66PgnujnVT",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,
@@ -75,21 +76,32 @@ const state = {
     store.update(store => ({ ...store, tokens }));
   },
   formatToken: async (tokenId: number, ledger: any): Promise<Token | null> => {
-    const entry = await ledger.token_metadata.get(tokenId.toString());
-    if (!entry) return null;
+    const token = await ledger.token_metadata.get(tokenId.toString());
+    if (!token) return null;
 
     const totalSupply = await ledger.token_total_supply.get(tokenId.toString());
-    const extras = {};
-    entry.extras.forEach((value, key) => (extras[key] = value));
+    const admin = await ledger.token_admins.get(tokenId.toString());
+
+    let metadata: {
+      name: string;
+      decimals: number;
+      symbol: string;
+      authors: string;
+    } = {
+      name: "",
+      decimals: 0,
+      symbol: "",
+      authors: ""
+    };
+    for (let entry of token[1].entries()) {
+      metadata[entry[0]] = bytes2Char(entry[1]);
+    }
 
     return {
       tokenID: tokenId,
-      name: entry.name,
-      symbol: entry.symbol,
-      admin: entry.admin,
-      decimals: entry.decimals.toNumber(),
+      admin,
       totalSupply: totalSupply.toNumber(),
-      extras
+      ...metadata
     };
   },
   updateUserTokens: (tokens: UserToken[]) => {

@@ -2,11 +2,13 @@
   import store from "../../store";
   import { push } from "svelte-spa-router";
   import { Token } from "../../types";
+  import { char2Bytes } from "@taquito/tzip16";
 
   let name = "";
   let symbol = "";
   let totalSupply = "";
   let decimals = "0";
+  let author = "";
   let iconURL = "";
   let website = "";
   let emailAddress = "";
@@ -18,6 +20,7 @@
     if (
       name &&
       symbol &&
+      author &&
       symbol.length <= 5 &&
       totalSupply &&
       !isNaN(+totalSupply) &&
@@ -29,14 +32,20 @@
       // sends details to smart contract
       try {
         const tokenID = +$store.ledgerStorage.last_token_id + 1;
-        const extras: [string, string][] = [];
+        /*const extras: [string, string][] = [];
         if (iconURL) extras.push(["icon_url", iconURL]);
         if (website) extras.push(["website", website]);
         if (emailAddress) extras.push(["email_address", emailAddress]);
-        if (username) extras.push(["username", username]);
+        if (username) extras.push(["username", username]);*/
 
         const op = await $store.ledgerInstance.methods
-          .mint_tokens(symbol, name, decimals, totalSupply, extras)
+          .mint_tokens(
+            char2Bytes(symbol),
+            char2Bytes(name),
+            char2Bytes(decimals),
+            totalSupply,
+            char2Bytes(`[${author}]`)
+          )
           .send();
         console.log(tokenID, op.opHash);
         await op.confirmation();
@@ -45,23 +54,9 @@
           tokenID,
           name,
           symbol,
-          admin: $store.userAddress,
           decimals: +decimals,
           totalSupply: +totalSupply,
-          extras: {},
         };
-        if (iconURL) {
-          newToken.extras.iconURL = iconURL;
-        }
-        if (website) {
-          newToken.extras.website = website;
-        }
-        if (emailAddress) {
-          newToken.extras.emailAddress = emailAddress;
-        }
-        if (username) {
-          newToken.extras.username = username;
-        }
 
         store.updateTokens([...$store.tokens, newToken]);
         // resets the UI
@@ -69,6 +64,7 @@
         symbol = "";
         totalSupply = "";
         decimals = "0";
+        author = "";
         iconURL = "";
         website = "";
         emailAddress = "";
@@ -134,6 +130,10 @@
         <div class="card-body-element">
           <div>Decimals:</div>
           <div><input type="text" bind:value={decimals} /></div>
+        </div>
+        <div class="card-body-element">
+          <div>Creator:</div>
+          <div><input type="text" bind:value={author} /></div>
         </div>
         <details>
           <summary>Optional information</summary>

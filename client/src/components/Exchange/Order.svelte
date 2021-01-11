@@ -31,6 +31,8 @@
   const fulfillOrder = async (): Promise<void> => {
     if (order.order_id) {
       loadingFulfillOrder = true;
+      openFulfillOrder = false;
+
       const orders = $store.orderBook.filter(
         (ord) => ord.order_id === order.order_id
       );
@@ -74,7 +76,7 @@
               } else if (tk.tokenID === order.token_id_to_sell) {
                 return {
                   ...tk,
-                  balance: tk.balance - order.token_amount_to_sell,
+                  balance: tk.balance + order.token_amount_to_sell,
                 };
               } else {
                 return tk;

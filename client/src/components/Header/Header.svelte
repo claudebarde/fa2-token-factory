@@ -96,16 +96,6 @@
     await setUserTokens(userAddress);
   };
 
-  /*const initBeaconWallet = async () => {
-    const wallet = new BeaconWallet({ name: "Tezos Token Factory" });
-    await wallet.requestPermissions({ network: { type: NetworkType.CUSTOM } });
-    const userAddress = await wallet.getPKH();
-    store.updateWallet(wallet);
-    store.updateWalletType("beacon");
-    store.updateUserAddress(userAddress);
-    $store.Tezos.setWalletProvider(wallet);
-  };*/
-
   const disconnectWallet = () => {
     if ($store.walletType === "beacon") {
       ($store.wallet as BeaconWallet).client.destroy();
@@ -115,18 +105,6 @@
     store.updateUserAddress(undefined);
     $store.Tezos.setWalletProvider(undefined);
   };
-
-  /*const initThanosWallet = async () => {
-    if (await ThanosWallet.isAvailable()) {
-      const wallet = new ThanosWallet("Tezos Token Factory");
-      await wallet.connect("sandbox", { forcePermission: true });
-      const userAddress = await wallet.getPKH();
-      store.updateWallet(wallet);
-      store.updateUserAddress(userAddress);
-      $store.Tezos.setWalletProvider(wallet);
-      setUserTokens(userAddress);
-    }
-  };*/
 
   onMount(async () => {
     const Tezos = new TezosToolkit(rpcAddress);

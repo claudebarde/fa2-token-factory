@@ -2,10 +2,10 @@ export interface Token {
   tokenID: number;
   name: string;
   symbol: string;
-  admin: string;
   decimals: number;
   totalSupply: number;
-  extras: { [n: string]: string };
+  admin?: string;
+  authors?: string;
 }
 
 export interface UserToken extends Token {

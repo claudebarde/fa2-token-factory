@@ -76,8 +76,10 @@
   <button on:click={() => (open = !open)}>Info</button>
 </div>
 <div class={`token-info-details ${open ? 'open' : ''}`}>
-  {#each Object.keys(token.extras) as key}
-    <p>{key}: {token.extras[key]}</p>
+  {#each Object.keys(token) as key}
+    {#if !['tokenID', 'decimals', 'totalSupply', 'name', 'symbol', 'admin'].includes(key)}
+      <p>{key}: {token[key]}</p>
+    {/if}
   {:else}
     <p>No additional information</p>
   {/each}

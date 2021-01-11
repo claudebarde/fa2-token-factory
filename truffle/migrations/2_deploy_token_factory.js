@@ -3,6 +3,8 @@ const { MichelsonMap } = require("@taquito/taquito");
 const { alice } = require("../scripts/sandbox/accounts");
 const faucet = require("../faucet");
 
+const char2Bytes = str => Buffer.from(str, "utf8").toString("hex");
+
 const admin = faucet.pkh; // alice.pkh;
 
 const wrapperId = 1;
@@ -23,14 +25,19 @@ const initialStorage = {
   }),
   token_metadata: MichelsonMap.fromLiteral({
     [wrapperId]: {
-      token_id: wrapperId,
-      admin,
-      symbol: "wTK",
-      name: "wToken",
-      decimals: 6,
-      extras: new MichelsonMap()
+      0: wrapperId,
+      1: MichelsonMap.fromLiteral({
+        name: char2Bytes("wToken"),
+        symbol: char2Bytes("wTK"),
+        decimals: char2Bytes("6"),
+        authors: char2Bytes("[Claude Barde]")
+      })
     }
   }),
+  token_admins: MichelsonMap.fromLiteral({
+    1: admin
+  }),
+  metadata: new MichelsonMap(),
   admin,
   exchange_address: admin,
   last_token_id: wrapperId
