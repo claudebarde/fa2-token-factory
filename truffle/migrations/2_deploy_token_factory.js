@@ -5,7 +5,8 @@ const faucet = require("../faucet");
 
 const char2Bytes = str => Buffer.from(str, "utf8").toString("hex");
 
-const admin = faucet.pkh; // alice.pkh;
+// const admin = alice.pkh;
+const admin = faucet.pkh;
 
 const wrapperId = 1;
 const ledger = new MichelsonMap();
@@ -27,10 +28,9 @@ const initialStorage = {
     [wrapperId]: {
       0: wrapperId,
       1: MichelsonMap.fromLiteral({
-        name: char2Bytes("wToken"),
-        symbol: char2Bytes("wTK"),
-        decimals: char2Bytes("6"),
-        authors: char2Bytes("[Claude Barde]")
+        "": char2Bytes(
+          `{"name":"wToken","symbol":"wTK","decimals":"6","authors":"[Claude Barde]"}`
+        )
       })
     }
   }),

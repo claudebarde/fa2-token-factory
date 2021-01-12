@@ -40,11 +40,10 @@
 
         const op = await $store.ledgerInstance.methods
           .mint_tokens(
-            char2Bytes(symbol),
-            char2Bytes(name),
-            char2Bytes(decimals),
-            totalSupply,
-            char2Bytes(`[${author}]`)
+            char2Bytes(
+              `{"name":"${name}","symbol":"${symbol}","decimals":"${decimals}","authors":"[${author}]"}`
+            ),
+            totalSupply
           )
           .send();
         console.log(tokenID, op.opHash);
@@ -116,24 +115,28 @@
       <div class="card-header">Insert here the details of the new token</div>
       <div class="card-body">
         <div class="card-body-element">
-          <div>Name:</div>
-          <div><input type="text" bind:value={name} /></div>
+          <label for="token-name">Name:
+            <input type="text" id="token-name" bind:value={name} /></label>
+          <label for="token-symbol">Symbol:
+            <input
+              type="text"
+              id="token-symbol"
+              bind:value={symbol}
+              maxlength="5" /></label>
         </div>
         <div class="card-body-element">
-          <div>Symbol:</div>
-          <div><input type="text" bind:value={symbol} maxlength="5" /></div>
+          <label for="token-decimals">Decimals:
+            <input type="text" bind:value={decimals} />
+          </label>
+          <label for="token-total-supply">Total supply:
+            <input type="text" bind:value={totalSupply} />
+          </label>
         </div>
         <div class="card-body-element">
-          <div>Total supply:</div>
-          <div><input type="text" bind:value={totalSupply} /></div>
-        </div>
-        <div class="card-body-element">
-          <div>Decimals:</div>
-          <div><input type="text" bind:value={decimals} /></div>
-        </div>
-        <div class="card-body-element">
-          <div>Creator:</div>
-          <div><input type="text" bind:value={author} /></div>
+          <label for="token-creator">
+            Creator:
+            <input type="text" bind:value={author} />
+          </label>
         </div>
         <details>
           <summary>Optional information</summary>

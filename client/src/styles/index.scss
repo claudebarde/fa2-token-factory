@@ -50,12 +50,9 @@ a {
       align-items: center;
       padding: 10px 0px;
 
-      & :first-child {
-        width: 40%;
-      }
-
-      & :last-child {
-        width: 60%;
+      label {
+        width: 100%;
+        padding: 0px 10px;
       }
 
       input[type="text"] {

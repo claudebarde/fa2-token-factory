@@ -98,13 +98,9 @@ type token_metadata_param =
 }*)
 
 type mint_tokens_params = 
-[@layout:comb]
 {
-    symbol: bytes;
-    name: bytes;
-    decimals: bytes;
+    metadata: bytes;
     total_supply: nat;
-    authors: bytes;
 }
 
 type order_type = Buy | Sell
@@ -341,10 +337,6 @@ tools.
 
 
 # 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
-
-
-
-
 
 
 
@@ -933,10 +925,7 @@ let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
     let new_token_id: token_id = s.last_token_id + 1n in
     (* Creates token metadata *)
     let token_metadata_map: (string, bytes) map = Map.literal [
-        ("name", p.name);
-        ("symbol", p.symbol);
-        ("decimals", p.decimals);
-        ("authors", p.authors);
+        ("", p.metadata)
     ] in
     let new_token_metadata: token_metadata_storage =
         Big_map.add new_token_id (new_token_id, token_metadata_map) s.token_metadata in

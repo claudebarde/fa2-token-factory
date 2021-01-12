@@ -30,12 +30,12 @@ const initialState: State = {
   network: "testnet", //process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
-    testnet: "KT1PGjQQ5nb2mcbi5ahyfVMn27F7tAfHt4Xq",
+    testnet: "KT199avaScnVeutqrdT4T1ynfM8ziQT2wtqj",
     local: "KT1HCTmt3U4aXcTSw5zx8kEejWRpQssT674Y"
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1ME5SR9gBvZUWiE8d2ruHZAp66PgnujnVT",
+    testnet: "KT1FpSxzis9o4RtuvCXZ9hv9nknydEktFctQ",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,
@@ -95,6 +95,13 @@ const state = {
     };
     for (let entry of token[1].entries()) {
       metadata[entry[0]] = bytes2Char(entry[1]);
+    }
+
+    if (metadata.hasOwnProperty("")) {
+      // empty key indicates a JSON string of metadata
+      const jsonMetadata = JSON.parse(metadata[""]);
+      delete metadata[""];
+      metadata = { ...metadata, ...jsonMetadata };
     }
 
     return {

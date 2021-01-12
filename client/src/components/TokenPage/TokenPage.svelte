@@ -109,7 +109,10 @@
         <div class="param-token">
           <div class="param-token__title">
             <div>
-              <img class="param-token__title__icon" src="" alt="token icon" />
+              <img
+                class="param-token__title__icon"
+                src="images/tezos-coin.png"
+                alt="token icon" />
             </div>
             <div>{paramToken.name} Token</div>
           </div>

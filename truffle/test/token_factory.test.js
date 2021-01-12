@@ -1,9 +1,14 @@
-const { Tezos } = require("@taquito/taquito");
 const { alice, bob } = require("../scripts/sandbox/accounts");
 const setup = require("./setup");
+const { char2Bytes, bytes2Char } = require("@taquito/tzip16");
 
 contract("FA2 Fungible Token Factory", () => {
-  let storage, fa2_address, exchange_address, exchange_instance, signerFactory;
+  let Tezos,
+    storage,
+    fa2_address,
+    exchange_address,
+    exchange_instance,
+    signerFactory;
 
   const aliToken = {
     id: 2,
@@ -31,7 +36,7 @@ contract("FA2 Fungible Token Factory", () => {
     signerFactory = config.signerFactory;
     exchange_address = config.exchange_address;
     exchange_instance = config.exchange_instance;
-    Tezos.setRpcProvider("http://localhost:8732");
+    Tezos = config.Tezos;
 
     try {
       console.log("Updating main address and exchange address in contracts...");
@@ -57,7 +62,8 @@ contract("FA2 Fungible Token Factory", () => {
   it("should have wToken initialized with ID 1 and 0 total supply", async () => {
     const token = await storage.token_total_supply.get("1");
     assert.equal(token.toNumber(), 0);
-    const metadata = await storage.token_metadata.get("1");
+    const token_metadata = await storage.token_metadata.get("1");
+    const metadata = JSON.parse(bytes2Char(await token_metadata[1].get("")));
     assert.equal(metadata.name, "wToken");
   });
 
@@ -65,11 +71,10 @@ contract("FA2 Fungible Token Factory", () => {
     try {
       const op = await fa2_instance.methods
         .mint_tokens(
-          aliToken.symbol,
-          aliToken.name,
-          aliToken.decimals,
-          aliToken.totalSupply,
-          aliToken.extras
+          char2Bytes(
+            `{"name":"${aliToken.name}","symbol":"${aliToken.symbol}","decimals":"${aliToken.decimals}","authors":"[Alice]"}`
+          ),
+          aliToken.totalSupply
         )
         .send();
       await op.confirmation();
@@ -90,14 +95,14 @@ contract("FA2 Fungible Token Factory", () => {
     );
     assert.equal(totalSupply.toNumber(), aliToken.totalSupply);
 
-    const metadata = await storage.token_metadata.get(aliToken.id.toString());
-    assert.equal(metadata.token_id, aliToken.id);
-    assert.equal(metadata.admin, alice.pkh);
+    const token_metadata = await storage.token_metadata.get(
+      aliToken.id.toString()
+    );
+    const metadata = JSON.parse(bytes2Char(await token_metadata[1].get("")));
+    assert.equal(token_metadata[0], aliToken.id);
     assert.equal(metadata.symbol, aliToken.symbol);
     assert.equal(metadata.name, aliToken.name);
     assert.equal(metadata.decimals, aliToken.decimals);
-    const picture = await metadata.extras.get("picture");
-    assert.equal(picture, aliToken.extras[0][1]);
   });
 
   it("should prevent Alice from exceeding her balance in transfers", async () => {
@@ -184,11 +189,10 @@ contract("FA2 Fungible Token Factory", () => {
       // should fail if token ID already exists
       const op = await fa2_instance.methods
         .mint_tokens(
-          bobToken.symbol,
-          bobToken.name,
-          bobToken.decimals,
-          bobToken.totalSupply,
-          bobToken.extras
+          char2Bytes(
+            `{"name":"${aliToken.name}","symbol":"${aliToken.symbol}","decimals":"${aliToken.decimals}","authors":"[Alice]"}`
+          ),
+          bobToken.totalSupply
         )
         .send();
       await op.confirmation();
@@ -389,7 +393,7 @@ contract("FA2 Fungible Token Factory", () => {
     const exchangeStorage = await exchange_instance.storage();
     const orderId = await exchangeStorage.last_order_id.toNumber();
     const order = await exchangeStorage.order_book.get(orderId.toString());
-    const amountToBuy = order.total_token_amount.toNumber();
+    const amountToBuy = order.token_amount_to_buy.toNumber();
     // information from the ledger
     const aliceBalanceTokenToSell = (
       await storage.ledger.get({
@@ -475,6 +479,7 @@ contract("FA2 Fungible Token Factory", () => {
     });*/
     // verifies swap of tokens happened in the ledger
     // on Alice's side
+    console.log(order);
     assert.equal(
       aliceNewBalanceTokenToSell,
       aliceBalanceTokenToSell -

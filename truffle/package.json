@@ -3,10 +3,11 @@
   "version": "2.0.0",
   "description": "Tezos Bare Box =================",
   "dependencies": {
-    "@taquito/taquito": "^6.3.5-beta.0"
+    "@taquito/signer": "^7.1.0-beta.0",
+    "@taquito/taquito": "^7.2.0-alpha.2"
   },
   "devDependencies": {
-    "@taquito/tzip16": "^7.2.0-alpha.0",
+    "@taquito/tzip16": "^7.2.0-alpha.2",
     "ganache-cli": "^6.10.0-tezos.1"
   },
   "scripts": {
