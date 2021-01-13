@@ -16,6 +16,19 @@
   let inputError = false;
   let loading = false;
 
+  const isFormComplete = (name, symbol, author, totalSupply, decimals) => {
+    return (
+      name &&
+      symbol &&
+      author &&
+      symbol.length <= 5 &&
+      totalSupply &&
+      !isNaN(+totalSupply) &&
+      decimals &&
+      !isNaN(+decimals)
+    );
+  };
+
   const createNewToken = async () => {
     if (
       name &&
@@ -55,6 +68,7 @@
           symbol,
           decimals: +decimals,
           totalSupply: +totalSupply,
+          admin: $store.userAddress,
         };
 
         store.updateTokens([...$store.tokens, newToken]);
@@ -176,7 +190,10 @@
                 <span>Confirming...</span><span class="spinner" />
               </button>
             {:else}
-              <button class="button" on:click={createNewToken}>Confirm</button>
+              <button
+                class={`button ${isFormComplete(name, symbol, author, totalSupply, decimals) ? 'green' : 'disabled'}`}
+                disabled={!isFormComplete(name, symbol, author, totalSupply, decimals)}
+                on:click={createNewToken}>Confirm</button>
             {/if}
           {:else}
             <button class="button" disabled>Please connect your wallet</button>

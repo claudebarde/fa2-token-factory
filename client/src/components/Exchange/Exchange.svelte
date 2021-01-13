@@ -5,6 +5,7 @@
   import Modal from "../Modal/Modal.svelte";
   import Order from "./Order.svelte";
   import { displayTokenAmount } from "../../utils";
+  import ViewTransaction from "../Modal/ViewTransaction.svelte";
 
   let tokenToBuy: number = 0;
   let tokenToBuyAmount: string = "";
@@ -20,6 +21,8 @@
   let openConfirmNewOrder = false;
   let openDeleteOrder = false;
   let openFulfillOrder = false;
+  let viewTxToast = false;
+  let opHash = "";
 
   const displayMaxAmount = (tokenID: number): string => {
     const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID)[0];
@@ -56,6 +59,11 @@
         const op = await $store.ledgerInstance.methods
           .buy_xtz_wrapper([["unit"]])
           .send({ amount: +buyWTK });
+
+        opHash = op.opHash;
+        setTimeout(() => (viewTxToast = true), 2000);
+        setTimeout(() => (viewTxToast = false), 6000);
+
         await op.confirmation();
         // update the storage
         const newStorage: any = await $store.ledgerInstance.storage();
@@ -123,7 +131,12 @@
         const op = await $store.ledgerInstance.methods
           .redeem_xtz_wrapper(+redeemWTK * 10 ** 6)
           .send();
+
         console.log(op.opHash);
+        opHash = op.opHash;
+        setTimeout(() => (viewTxToast = true), 2000);
+        setTimeout(() => (viewTxToast = false), 6000);
+
         await op.confirmation();
         // updates user's local balance
         const tokens = $store.userTokens.map((tk) => {
@@ -180,14 +193,6 @@
       try {
         const op = await $store.ledgerInstance.methods
           .new_exchange_order(
-            /*"buy",
-            [["unit"]],
-            tokenToSell.toString(),
-            (+tokenToSellAmount * 10 ** tokenToSellDecimals).toString(),
-            tokenToBuy.toString(),
-            (+tokenToBuyAmount * 10 ** tokenToBuyDecimals).toString(),
-            (+tokenToSellAmount * 10 ** tokenToSellDecimals).toString(),
-            $store.userAddress*/
             "buy",
             [["unit"]],
             tokenToSell.toString(),
@@ -198,7 +203,12 @@
             $store.userAddress
           )
           .send();
+
         console.log(op.opHash);
+        opHash = op.opHash;
+        setTimeout(() => (viewTxToast = true), 2000);
+        setTimeout(() => (viewTxToast = false), 6000);
+
         await op.confirmation();
         // updates the local exchange storage
         const newStorage: any = await $store.exchangeInstance.storage();
@@ -491,7 +501,13 @@
     </div>
     <div class="orders-wrapper">
       {#each $store.orderBook as order}
-        <Order {order} {getTokenSymbol} {openDeleteOrder} {openFulfillOrder} />
+        <Order
+          {order}
+          {getTokenSymbol}
+          {openDeleteOrder}
+          {openFulfillOrder}
+          showViewTx={(state) => (viewTxToast = state)}
+          passOpHash={(hash) => (opHash = hash)} />
       {:else}
         <div
           style="width:100%;text-align:center;padding: 20px;background-color:white">
@@ -519,3 +535,4 @@
   open={openConfirmNewOrder}
   close={() => (openConfirmNewOrder = false)}
   confirm={confirmNewOrder} />
+<ViewTransaction {opHash} show={viewTxToast} />

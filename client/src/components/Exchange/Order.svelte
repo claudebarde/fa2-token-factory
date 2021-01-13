@@ -4,7 +4,12 @@
   import Modal from "../Modal/Modal.svelte";
   import { displayTokenAmount } from "../../utils";
 
-  export let order, getTokenSymbol, openDeleteOrder, openFulfillOrder;
+  export let order,
+    getTokenSymbol,
+    openDeleteOrder,
+    openFulfillOrder,
+    showViewTx,
+    passOpHash;
 
   let loadingDeleteOrder = false;
   let loadingFulfillOrder = false;
@@ -47,6 +52,11 @@
               order.token_amount_to_buy
             )
             .send();
+
+          passOpHash(op.opHash);
+          setTimeout(() => showViewTx(true), 2000);
+          setTimeout(() => showViewTx(false), 6000);
+
           await op.confirmation();
           // updates user's balances
           let tokens: UserToken[];
@@ -156,6 +166,7 @@
     {:else}
       <button
         class={`button ${$store.userAddress ? (availableBalance(order.token_id_to_buy, order.token_amount_to_buy) ? 'green' : 'red') : ''}`}
+        disabled={!$store.userAddress || !availableBalance(order.token_id_to_buy, order.token_amount_to_buy)}
         on:click={() => {
           if ($store.userAddress) {
             openFulfillOrder = true;
