@@ -30,12 +30,12 @@ const initialState: State = {
   network: "testnet", //process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
-    testnet: "KT199avaScnVeutqrdT4T1ynfM8ziQT2wtqj",
+    testnet: "KT1BCQiiA6ZTPm4DfDgKV3c7hbRHJoYNcJPJ",
     local: "KT1HCTmt3U4aXcTSw5zx8kEejWRpQssT674Y"
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1FpSxzis9o4RtuvCXZ9hv9nknydEktFctQ",
+    testnet: "KT1GDZTypYYVLxaUag5K6Y1Y5ip4VszojBmi",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,
@@ -106,7 +106,7 @@ const state = {
 
     return {
       tokenID: tokenId,
-      admin,
+      admin: admin[0],
       totalSupply: totalSupply.toNumber(),
       ...metadata
     };

@@ -35,9 +35,19 @@ const initialStorage = {
     }
   }),
   token_admins: MichelsonMap.fromLiteral({
-    1: admin
+    1: [admin, true]
   }),
-  metadata: new MichelsonMap(),
+  metadata: MichelsonMap.fromLiteral({
+    "": char2Bytes("tezos-storage:contents"),
+    contents: char2Bytes(
+      JSON.stringify({
+        name: "FA2 Token Factory",
+        description:
+          "A fungible token factory to create, mint, transfer and exchange tokens",
+        authors: ["https://www.github.com/claudebarde"]
+      })
+    )
+  }),
   admin,
   exchange_address: admin,
   last_token_id: wrapperId

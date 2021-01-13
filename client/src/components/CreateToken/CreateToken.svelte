@@ -7,6 +7,7 @@
   let name = "";
   let symbol = "";
   let totalSupply = "";
+  let fixedTotalSupply = true;
   let decimals = "0";
   let author = "";
   let iconURL = "";
@@ -16,11 +17,19 @@
   let inputError = false;
   let loading = false;
 
-  const isFormComplete = (name, symbol, author, totalSupply, decimals) => {
+  const isFormComplete = (
+    name,
+    symbol,
+    author,
+    totalSupply,
+    decimals,
+    fixedTotalSupply
+  ) => {
     return (
       name &&
       symbol &&
       author &&
+      fixedTotalSupply &&
       symbol.length <= 5 &&
       totalSupply &&
       !isNaN(+totalSupply) &&
@@ -31,32 +40,28 @@
 
   const createNewToken = async () => {
     if (
-      name &&
-      symbol &&
-      author &&
-      symbol.length <= 5 &&
-      totalSupply &&
-      !isNaN(+totalSupply) &&
-      decimals &&
-      !isNaN(+decimals)
+      isFormComplete(
+        name,
+        symbol,
+        author,
+        totalSupply,
+        decimals,
+        fixedTotalSupply
+      )
     ) {
       inputError = false;
       loading = true;
       // sends details to smart contract
       try {
         const tokenID = +$store.ledgerStorage.last_token_id + 1;
-        /*const extras: [string, string][] = [];
-        if (iconURL) extras.push(["icon_url", iconURL]);
-        if (website) extras.push(["website", website]);
-        if (emailAddress) extras.push(["email_address", emailAddress]);
-        if (username) extras.push(["username", username]);*/
 
         const op = await $store.ledgerInstance.methods
           .mint_tokens(
             char2Bytes(
               `{"name":"${name}","symbol":"${symbol}","decimals":"${decimals}","authors":"[${author}]"}`
             ),
-            totalSupply
+            totalSupply,
+            fixedTotalSupply
           )
           .send();
         console.log(tokenID, op.opHash);
@@ -69,6 +74,7 @@
           decimals: +decimals,
           totalSupply: +totalSupply,
           admin: $store.userAddress,
+          authors: `[${author}]`,
         };
 
         store.updateTokens([...$store.tokens, newToken]);
@@ -118,6 +124,16 @@
       justify-content: flex-start;
     }
   }
+
+  #fixed-total-supply {
+    float: right;
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      appearance: none;
+    }
+  }
 </style>
 
 <main>
@@ -143,6 +159,10 @@
             <input type="text" bind:value={decimals} />
           </label>
           <label for="token-total-supply">Total supply:
+            <span
+              id="fixed-total-supply"
+              on:click={() => (fixedTotalSupply = !fixedTotalSupply)}>{fixedTotalSupply ? 'Fixed' : 'Changeable'}
+              <input type="checkbox" bind:checked={fixedTotalSupply} /></span>
             <input type="text" bind:value={totalSupply} />
           </label>
         </div>
@@ -191,8 +211,8 @@
               </button>
             {:else}
               <button
-                class={`button ${isFormComplete(name, symbol, author, totalSupply, decimals) ? 'green' : 'disabled'}`}
-                disabled={!isFormComplete(name, symbol, author, totalSupply, decimals)}
+                class={`button ${isFormComplete(name, symbol, author, totalSupply, decimals, fixedTotalSupply) ? 'green' : 'disabled'}`}
+                disabled={!isFormComplete(name, symbol, author, totalSupply, decimals, fixedTotalSupply)}
                 on:click={createNewToken}>Confirm</button>
             {/if}
           {:else}

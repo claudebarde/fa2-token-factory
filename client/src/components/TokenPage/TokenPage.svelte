@@ -13,14 +13,24 @@
     if (params.id) {
       if (isNaN(params.id)) {
         // token symbol provided
-        paramToken = $store.tokens.filter(
+        const token = $store.tokens.filter(
           (token) => token.symbol === params.id
-        )[0];
+        );
+        if (token && token.length === 1) {
+          paramToken = token[0];
+        } else {
+          paramToken = undefined;
+        }
       } else {
         // token id provided
-        paramToken = $store.tokens.filter(
+        const token = $store.tokens.filter(
           (token) => token.tokenID === +params.id
-        )[0];
+        );
+        if (token && token.length === 1) {
+          paramToken = token[0];
+        } else {
+          paramToken = undefined;
+        }
       }
     }
   });
@@ -114,9 +124,8 @@
                 src="images/tezos-coin.png"
                 alt="token icon" />
             </div>
-            <div>{paramToken.name} Token</div>
+            <div>{paramToken.name} ({paramToken.symbol})</div>
           </div>
-          <div class="param-token__symbol">Symbol: {paramToken.symbol}</div>
           <div class="param-token__total-supply">
             Total Supply:
             {displayTokenAmount(paramToken.tokenID, paramToken.totalSupply).toLocaleString('en-US')}

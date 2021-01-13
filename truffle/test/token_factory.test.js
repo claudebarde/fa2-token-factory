@@ -74,7 +74,8 @@ contract("FA2 Fungible Token Factory", () => {
           char2Bytes(
             `{"name":"${aliToken.name}","symbol":"${aliToken.symbol}","decimals":"${aliToken.decimals}","authors":"[Alice]"}`
           ),
-          aliToken.totalSupply
+          aliToken.totalSupply,
+          true
         )
         .send();
       await op.confirmation();
@@ -161,6 +162,35 @@ contract("FA2 Fungible Token Factory", () => {
     assert.equal(bobBalance.toNumber(), tokenAmount);
   });
 
+  it("should let Alice mint more tokens", async () => {
+    const aliceBalance = await storage.ledger.get({
+      owner: alice.pkh,
+      token_id: aliToken.id
+    });
+    const newTokens = 10000;
+
+    try {
+      const op = await fa2_instance.methods
+        .mint_more_tokens(aliToken.id, newTokens)
+        .send();
+      await op.confirmation();
+    } catch (error) {
+      console.log(error);
+    }
+
+    storage = await fa2_instance.storage();
+
+    const aliceNewBalance = await storage.ledger.get({
+      owner: alice.pkh,
+      token_id: aliToken.id
+    });
+
+    assert.equal(
+      aliceBalance.toNumber() + newTokens,
+      aliceNewBalance.toNumber()
+    );
+  });
+
   it("should mint Bob tokens", async () => {
     await signerFactory(bob.sk);
 
@@ -192,7 +222,8 @@ contract("FA2 Fungible Token Factory", () => {
           char2Bytes(
             `{"name":"${aliToken.name}","symbol":"${aliToken.symbol}","decimals":"${aliToken.decimals}","authors":"[Alice]"}`
           ),
-          bobToken.totalSupply
+          bobToken.totalSupply,
+          true
         )
         .send();
       await op.confirmation();

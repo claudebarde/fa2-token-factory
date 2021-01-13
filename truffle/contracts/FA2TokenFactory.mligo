@@ -98,9 +98,17 @@ type token_metadata_param =
 }*)
 
 type mint_tokens_params = 
+[@layout:comb]
 {
     metadata: bytes;
     total_supply: nat;
+    can_mint_more: bool;
+}
+
+type mint_more_tokens_params = 
+{
+  token_id: token_id;
+  tokens_to_mint: nat;
 }
 
 type order_type = Buy | Sell
@@ -152,6 +160,7 @@ type fa2_entry_points =
   | Update_operators of update_operator_michelson list
   | Token_metadata_registry of address contract
   | Mint_tokens of mint_tokens_params
+  | Mint_more_tokens of mint_more_tokens_params
   | Burn_tokens of token_id * nat
   | New_exchange_order of order_book_entry
   | Buy_from_exchange of buy_params
@@ -337,6 +346,15 @@ tools.
 
 
 # 1 "./multi_asset/ligo/src/../fa2/lib/../fa2_interface.mligo" 1
+
+
+
+
+
+
+
+
+
 
 
 
@@ -910,7 +928,7 @@ type multi_token_storage = {
   operators : operator_storage;
   token_total_supply : token_total_supply;
   token_metadata : token_metadata_storage;
-  token_admins: (token_id, address) big_map;
+  token_admins: (token_id, (address * bool)) big_map; (* token_id -> (token_admin, add_more_tokens) *)
   exchange_address: address;
   admin: address;
   last_token_id: token_id;
@@ -939,8 +957,37 @@ let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
     { s with ledger = new_ledger; 
             token_total_supply = total_supply; 
             token_metadata = new_token_metadata;
-            token_admins = Big_map.add new_token_id Tezos.sender s.token_admins;
+            token_admins = Big_map.add new_token_id (Tezos.sender, p.can_mint_more) s.token_admins;
             last_token_id = new_token_id; }
+
+let mint_more_tokens ((p, s): mint_more_tokens_params * multi_token_storage) =
+    (* checks if sender is admin *)
+    let admin: (address * bool) = 
+        match Big_map.find_opt p.token_id s.token_admins with
+        | None -> (failwith "NO_TOKEN_FOUND": (address * bool))
+        | Some a -> 
+            if a.0 <> Tezos.sender
+            then (failwith "UNAUTHORIZED_ACTION": (address * bool))
+            else   
+                a in 
+    (* checks if admin is allowed to mint more tokens *)
+    if admin.1 = false
+    then (failwith "FIXED_TOTAL_SUPPLY": multi_token_storage)
+    else
+        (* Updates total supply and admin's balance *)
+        let new_total_supply = 
+            match Big_map.find_opt p.token_id s.token_total_supply with
+            | None -> (failwith "NO_TOKEN_FOUND": nat)
+            | Some t -> t + p.tokens_to_mint in
+        let new_balance =
+            match Big_map.find_opt (Tezos.sender, p.token_id) s.ledger with
+            | None -> (failwith "NO_TOKEN_FOUND": nat)
+            | Some b -> b + p.tokens_to_mint in
+        (* Updates storage *)
+        { s with 
+            token_total_supply = Big_map.update p.token_id (Some new_total_supply) s.token_total_supply;
+            ledger = Big_map.update (Tezos.sender, p.token_id) (Some new_balance) s.ledger
+        }
         
 
 
@@ -955,10 +1002,10 @@ let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_tok
         match Big_map.find_opt token_id s.token_admins with
         | None -> (failwith "NO_TOKEN_FOUND": address)
         | Some a -> 
-            if a <> Tezos.sender
+            if a.0 <> Tezos.sender
             then (failwith "UNAUTHORIZED_ACTION": address)
             else   
-                a in    
+                a.0 in    
     (* Verifies the admin as the right amount of token *)
     let admin_balance: nat = 
         match Big_map.find_opt (Tezos.sender, token_id) s.ledger with
@@ -1238,8 +1285,12 @@ let main (param, storage : fa2_entry_points * multi_token_storage)
     let callback_op = Operation.transaction Tezos.self_address 0mutez callback in
     [callback_op], storage
 
-   | Mint_tokens params ->
+  | Mint_tokens params ->
     let new_storage = mint_tokens (params, storage) in
+    ([] : operation list), new_storage
+
+  | Mint_more_tokens params ->
+    let new_storage = mint_more_tokens (params, storage) in
     ([] : operation list), new_storage
 
   | Burn_tokens params ->

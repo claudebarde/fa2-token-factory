@@ -160,7 +160,7 @@
           <span>Delete</span></button>
       {/if}
     {:else if loadingFulfillOrder}
-      <button class="button red">
+      <button class="button disabled" disabled>
         <span>Confirming...</span><span class="spinner" />
       </button>
     {:else}
