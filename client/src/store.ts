@@ -108,6 +108,7 @@ const state = {
       tokenID: tokenId,
       admin: admin[0],
       totalSupply: totalSupply.toNumber(),
+      fixedSupply: admin[1],
       ...metadata
     };
   },

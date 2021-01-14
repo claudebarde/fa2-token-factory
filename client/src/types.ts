@@ -4,6 +4,7 @@ export interface Token {
   symbol: string;
   decimals: number;
   totalSupply: number;
+  fixedSupply: boolean;
   admin?: string;
   authors?: string;
 }

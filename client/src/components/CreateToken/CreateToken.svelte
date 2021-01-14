@@ -3,6 +3,7 @@
   import { push } from "svelte-spa-router";
   import { Token } from "../../types";
   import { char2Bytes } from "@taquito/tzip16";
+  import ViewTransaction from "../Modal/ViewTransaction.svelte";
 
   let name = "";
   let symbol = "";
@@ -16,6 +17,8 @@
   let username = "";
   let inputError = false;
   let loading = false;
+  let opHash = "";
+  let viewTxToast = false;
 
   const isFormComplete = (
     name,
@@ -60,11 +63,16 @@
             char2Bytes(
               `{"name":"${name}","symbol":"${symbol}","decimals":"${decimals}","authors":"[${author}]"}`
             ),
-            totalSupply,
-            fixedTotalSupply
+            +totalSupply * 10 ** +decimals,
+            !fixedTotalSupply
           )
           .send();
+
         console.log(tokenID, op.opHash);
+        opHash = op.opHash;
+        setTimeout(() => (viewTxToast = true), 2000);
+        setTimeout(() => (viewTxToast = false), 6000);
+
         await op.confirmation();
         // updates the token list
         let newToken: Token = {
@@ -72,12 +80,17 @@
           name,
           symbol,
           decimals: +decimals,
-          totalSupply: +totalSupply,
+          totalSupply: +totalSupply * 10 ** +decimals,
+          fixedSupply: !fixedTotalSupply,
           admin: $store.userAddress,
-          authors: `[${author}]`,
+          authors: `[${author}]`
         };
 
         store.updateTokens([...$store.tokens, newToken]);
+        store.updateUserTokens([
+          ...$store.userTokens,
+          { ...newToken, balance: +totalSupply }
+        ]);
         // resets the UI
         name = "";
         symbol = "";
@@ -103,39 +116,6 @@
   };
 </script>
 
-<style lang="scss">
-  main {
-    padding: 50px 0px;
-    height: 90%;
-    overflow: hidden;
-
-    .head {
-      padding: 20px 50px;
-    }
-
-    .body {
-      padding: 50px;
-      background-color: #edf2f7;
-      border-top: solid 3px #a0aec0;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-    }
-  }
-
-  #fixed-total-supply {
-    float: right;
-    font-size: 0.8rem;
-    cursor: pointer;
-
-    input[type="checkbox"] {
-      appearance: none;
-    }
-  }
-</style>
-
 <main>
   <section class="head">
     <h1>Create a new token</h1>
@@ -145,24 +125,33 @@
       <div class="card-header">Insert here the details of the new token</div>
       <div class="card-body">
         <div class="card-body-element">
-          <label for="token-name">Name:
-            <input type="text" id="token-name" bind:value={name} /></label>
-          <label for="token-symbol">Symbol:
+          <label for="token-name"
+            >Name:
+            <input type="text" id="token-name" bind:value={name} /></label
+          >
+          <label for="token-symbol"
+            >Symbol:
             <input
               type="text"
               id="token-symbol"
               bind:value={symbol}
-              maxlength="5" /></label>
+              maxlength="5"
+            /></label
+          >
         </div>
         <div class="card-body-element">
-          <label for="token-decimals">Decimals:
+          <label for="token-decimals"
+            >Decimals:
             <input type="text" bind:value={decimals} />
           </label>
-          <label for="token-total-supply">Total supply:
+          <label for="token-total-supply"
+            >Total supply:
             <span
               id="fixed-total-supply"
-              on:click={() => (fixedTotalSupply = !fixedTotalSupply)}>{fixedTotalSupply ? 'Fixed' : 'Changeable'}
-              <input type="checkbox" bind:checked={fixedTotalSupply} /></span>
+              on:click={() => (fixedTotalSupply = !fixedTotalSupply)}
+              >{fixedTotalSupply ? "Fixed" : "Changeable"}
+              <input type="checkbox" bind:checked={fixedTotalSupply} /></span
+            >
             <input type="text" bind:value={totalSupply} />
           </label>
         </div>
@@ -211,9 +200,28 @@
               </button>
             {:else}
               <button
-                class={`button ${isFormComplete(name, symbol, author, totalSupply, decimals, fixedTotalSupply) ? 'green' : 'disabled'}`}
-                disabled={!isFormComplete(name, symbol, author, totalSupply, decimals, fixedTotalSupply)}
-                on:click={createNewToken}>Confirm</button>
+                class={`button ${
+                  isFormComplete(
+                    name,
+                    symbol,
+                    author,
+                    totalSupply,
+                    decimals,
+                    fixedTotalSupply
+                  )
+                    ? "green"
+                    : "disabled"
+                }`}
+                disabled={!isFormComplete(
+                  name,
+                  symbol,
+                  author,
+                  totalSupply,
+                  decimals,
+                  fixedTotalSupply
+                )}
+                on:click={createNewToken}>Confirm</button
+              >
             {/if}
           {:else}
             <button class="button" disabled>Please connect your wallet</button>
@@ -223,3 +231,37 @@
     </div>
   </section>
 </main>
+<ViewTransaction {opHash} show={viewTxToast} />
+
+<style lang="scss">
+  main {
+    padding: 50px 0px;
+    height: 90%;
+    overflow: hidden;
+
+    .head {
+      padding: 20px 50px;
+    }
+
+    .body {
+      padding: 50px;
+      background-color: #edf2f7;
+      border-top: solid 3px #a0aec0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+  }
+
+  #fixed-total-supply {
+    float: right;
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      appearance: none;
+    }
+  }
+</style>
