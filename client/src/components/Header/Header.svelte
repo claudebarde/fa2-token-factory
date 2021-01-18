@@ -20,11 +20,11 @@
     // retrieves user's balances after wallet connection
     const balancePromises: Promise<BigNumber>[] = [];
 
-    tokens.forEach((token) => {
+    tokens.forEach(token => {
       balancePromises.push(
         $store.ledgerStorage.ledger.get({
           owner: address,
-          token_id: token.tokenID,
+          token_id: token.tokenID
         })
       );
     });
@@ -35,8 +35,8 @@
       const balance = b ? b.toNumber() : 0;
       if (balance > 0) {
         userTokens.push({
-          ...$store.tokens.filter((tk) => tk.tokenID === i + 1)[0],
-          balance: balance,
+          ...$store.tokens.filter(tk => tk.tokenID === i + 1)[0],
+          balance: balance
         });
       }
     });
@@ -45,6 +45,7 @@
   };
 
   const initTezbridgeWallet = async () => {
+    store.updateUserTokens([]);
     const wallet = new TezBridgeWallet();
     const userAddress = await wallet.getPKH();
     store.updateWallet(wallet);
@@ -64,29 +65,29 @@
           },
         },*/
         PERMISSION_REQUEST_SENT: {
-          handler: async (data) => {
+          handler: async data => {
             console.log("permission request success:", data);
-          },
+          }
         },
         PERMISSION_REQUEST_SUCCESS: {
-          handler: async (data) => {
+          handler: async data => {
             console.log("permission request success:", data);
-          },
+          }
         },
         OPERATION_REQUEST_SENT: {
-          handler: async (data) => {
+          handler: async data => {
             console.log("permission request success:", data);
-          },
+          }
         },
         OPERATION_REQUEST_SUCCESS: {
-          handler: async (data) => {
+          handler: async data => {
             console.log("permission request success:", data);
-          },
-        },
-      },
+          }
+        }
+      }
     });
     await wallet.requestPermissions({
-      network: { type: NetworkType.DELPHINET },
+      network: { type: NetworkType.DELPHINET }
     });
     const userAddress = await wallet.getPKH();
     store.updateWallet(wallet);
@@ -103,6 +104,7 @@
     store.updateWallet(undefined);
     store.updateWalletType(undefined);
     store.updateUserAddress(undefined);
+    store.updateUserTokens([]);
     $store.Tezos.setWalletProvider(undefined);
   };
 
@@ -291,54 +293,92 @@
         {#if $store.userAddress === undefined}
           <span>Wallet</span>
           <div class="wallet-menu" id="connect-wallet">
-            {#if process.env.NODE_ENV === 'development'}
+            {#if process.env.NODE_ENV === "development"}
               <p on:click={initTezbridgeWallet}>TezBridge</p>
             {/if}
             <p on:click={initBeacon}>
-              {process.env.NODE_ENV === 'development' ? 'Other' : 'Connect'}
+              {process.env.NODE_ENV === "development" ? "Other" : "Connect"}
             </p>
           </div>
         {:else}
           <img
             class="user-avatar"
             src={`https://services.tzkt.io/v1/avatars/${$store.userAddress}`}
-            alt="avatar" />
+            alt="avatar"
+          />
           <div class="wallet-menu" id="wallet-connected">
             <p>
               <a
                 href={`https://tzkt.io/${$store.userAddress}`}
                 target="_blank"
-                rel="noopener noreferrer">Connected as
-                {`${$store.userAddress.slice(0, 5)}...${$store.userAddress.slice(-5)}`}</a>
+                rel="noopener noreferrer"
+                >Connected as
+                {`${$store.userAddress.slice(
+                  0,
+                  5
+                )}...${$store.userAddress.slice(-5)}`}</a
+              >
             </p>
             <p on:click={disconnectWallet}>Disconnect wallet</p>
             {#each $store.userTokens as token}
               <p style="font-size:0.8rem">
-                <a href={`#/token/${token.tokenID}`}>{token.symbol}
+                <a href={`#/token/${token.tokenID}`}
+                  >{token.symbol}
                   balance:
-                  {(+displayTokenAmount(token.tokenID, token.balance)).toLocaleString('en-US')}</a>
+                  {(+displayTokenAmount(
+                    token.tokenID,
+                    token.balance
+                  )).toLocaleString("en-US")}</a
+                >
               </p>
             {/each}
           </div>
         {/if}
       </div>
       <div class="contracts-ready">
-        <div
-          id="ledger-contract"
-          class={$store.ledgerInstance === undefined ? 'red' : 'green'}
-          title={`Ledger Contract ${$store.ledgerInstance === undefined ? 'Not Connected' : 'Connected'}`} />
-        <div
-          id="exchange-contract"
-          class={$store.exchangeInstance === undefined ? 'red' : 'green'}
-          title={`Exchange Contract ${$store.ledgerInstance === undefined ? 'Not Connected' : 'Connected'}`} />
+        <a
+          href={`https://better-call.dev/${
+            $store.network === "testnet" ? "delphinet" : "mainnet"
+          }/${$store.ledgerAddress[$store.network]}/operations`}
+          target="_blank"
+          rel="noreferrer noopener nofollow">
+          <div
+            id="ledger-contract"
+            class={$store.ledgerInstance === undefined ? "red" : "green"}
+            title={`Ledger Contract ${
+              $store.ledgerInstance === undefined
+                ? "Not Connected"
+                : "Connected"
+            }`}
+          />
+        </a>
+        <a
+          href={`https://better-call.dev/${
+            $store.network === "testnet" ? "delphinet" : "mainnet"
+          }/${$store.exchangeAddress[$store.network]}/operations`}
+          target="_blank"
+          rel="noreferrer noopener nofollow">
+          <div
+            id="exchange-contract"
+            class={$store.exchangeInstance === undefined ? "red" : "green"}
+            title={`Exchange Contract ${
+              $store.ledgerInstance === undefined
+                ? "Not Connected"
+                : "Connected"
+            }`}
+          />
+        </a>
       </div>
       <div class="taquito-logo">
         <a
           href="https://tezostaquito.io"
           target="_blank"
-          rel="noreferrer noopener"><img
+          rel="noreferrer noopener nofollow"
+          ><img
             src="images/Built-with-square.png"
-            alt="built with Taquito" /></a>
+            alt="built with Taquito"
+          /></a
+        >
       </div>
     </div>
   </div>

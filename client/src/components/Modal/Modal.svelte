@@ -10,6 +10,9 @@
   export let close: (p?: any) => any | undefined; //should be a function
   export let confirm: (p?: any) => any | undefined; //should be a function
 
+  let transferRecipient = "";
+  let transferAmount = "";
+
   const calculateExchangeRate = async (): Promise<{
     amountToSell: number;
     amountToBuy: number;
@@ -19,7 +22,7 @@
       tokenToSell,
       tokenToBuy,
       tokenToBuyAmount,
-      tokenToSellAmount,
+      tokenToSellAmount
     } = payload;
     let amountToSell = 0;
     let amountToBuy = 0;
@@ -66,6 +69,7 @@
     padding: 30px;
     border-radius: 10px;
     max-width: 40%;
+    min-width: 400px;
 
     .modal__close {
       color: #374251;
@@ -101,17 +105,34 @@
       justify-content: flex-end;
     }
   }
+
+  input[type="text"] {
+    padding: 10px;
+    border: none;
+    border-radius: 3px;
+    background-color: #edf2f7;
+    outline: none;
+    width: 90%;
+    font-family: "Montserrat", sans-serif;
+  }
 </style>
 
 {#if open}
   <div class="modal-wrapper">
     <div class="background" transition:fade={{ duration: 200 }} />
     <div class="modal" transition:fly={{ y: 100, duration: 500 }}>
-      <div class="modal__close" on:click={close}><span>&#10006;</span></div>
+      <div
+        class="modal__close"
+        on:click={() => {
+          transferAmount = "";
+          transferRecipient = "";
+          close();
+        }}
+      ><span>&#10006;</span></div>
       <div class="modal__body">
-        {#if modalType === 'confirmWTKbuy'}
+        {#if modalType === "confirmWTKbuy"}
           <p>Would you like to buy {payload} wTK tokens?</p>
-        {:else if modalType === 'confirmNewOrder'}
+        {:else if modalType === "confirmNewOrder"}
           <p>
             You are about to create a new exchange order with the following
             details:
@@ -120,40 +141,109 @@
             <p>
               Exchange:
               {payload.tokenToSellAmount}
-              {$store.tokens.filter((tk) => tk.tokenID === payload.tokenToSell)[0].symbol}
+              {$store.tokens.filter(tk => tk.tokenID === payload.tokenToSell)[0]
+                .symbol}
               for
               {payload.tokenToBuyAmount}
-              {$store.tokens.filter((tk) => tk.tokenID === payload.tokenToBuy)[0].symbol}
+              {$store.tokens.filter(tk => tk.tokenID === payload.tokenToBuy)[0]
+                .symbol}
             </p>
           {/await}
           <p>Confirm this new order?</p>
-        {:else if modalType === 'deleteOrder'}
+        {:else if modalType === "deleteOrder"}
           <p>Would you like to delete the order number {payload}?</p>
-        {:else if modalType === 'confirmWTKredeem'}
+        {:else if modalType === "confirmWTKredeem"}
           <p>Would you like to redeem {payload} wTK for {payload} XTZ?</p>
-        {:else if modalType === 'fulfillOrder'}
+        {:else if modalType === "fulfillOrder"}
           {#if payload}
             <p>
               Are you sure you want to confirm
               <br />the exchange of
-              {displayTokenAmount(payload.token_id_to_buy, payload.token_amount_to_buy)}
-              {$store.tokens.filter((tk) => tk.tokenID === payload.token_id_to_buy)[0].symbol}
+              {displayTokenAmount(
+                payload.token_id_to_buy,
+                payload.token_amount_to_buy
+              )}
+              {$store.tokens.filter(
+                tk => tk.tokenID === payload.token_id_to_buy
+              )[0].symbol}
               for
-              {displayTokenAmount(payload.token_id_to_sell, payload.token_amount_to_sell)}
-              {$store.tokens.filter((tk) => tk.tokenID === payload.token_id_to_sell)[0].symbol}?
+              {displayTokenAmount(
+                payload.token_id_to_sell,
+                payload.token_amount_to_sell
+              )}
+              {$store.tokens.filter(
+                tk => tk.tokenID === payload.token_id_to_sell
+              )[0].symbol}?
             </p>
           {:else}
             <p>No order ID provided</p>
           {/if}
+        {:else if modalType === "transfer"}
+          <p>Transfer {payload.name} to another address</p>
+          <div>
+            <label for="transfer-to">
+              Recipient:
+              <input
+                type="text"
+                id="transfer-to"
+                bind:value={transferRecipient}
+              />
+            </label>
+          </div>
+          <br />
+          <div>
+            <label for="transfer-amount">
+              Amount:
+              <input
+                type="text"
+                id="transfer-amount"
+                bind:value={transferAmount}
+              />
+            </label>
+          </div>
+          <p>
+            {#if +payload.decimals > 0 && +transferAmount > 0}
+              <span style="font-size:0.8rem">
+                This will be converted to {(
+                  +transferAmount *
+                  10 ** +payload.decimals
+                ).toLocaleString("en-US")} µ{payload.symbol} for the transfer.
+              </span>
+            {:else}
+              &nbsp;
+            {/if}
+          </p>
         {:else}This is an empty modal{/if}
       </div>
       <div class="modal__footer">
         <button
-          class="button green"
+          class={`button ${
+            modalType === "transfer" && (!transferRecipient || !transferAmount)
+              ? "disabled"
+              : "green"
+          }`}
+          disabled={modalType === "transfer" &&
+            (!transferRecipient || !transferAmount)}
           on:click={() => {
-            if (confirm) confirm();
-          }}>Confirm</button>&nbsp;
-        <button class="button red" on:click={close}>Cancel</button>
+            if (modalType === "transfer") {
+              confirm({
+                tokenID: payload.tokenID,
+                recipient: transferRecipient,
+                amount: transferAmount
+              });
+            } else {
+              if (confirm) confirm();
+            }
+          }}>Confirm</button
+        >&nbsp;
+        <button
+          class="button red"
+          on:click={() => {
+            transferAmount = "";
+            transferRecipient = "";
+            close();
+          }}>Cancel</button
+        >
       </div>
     </div>
   </div>

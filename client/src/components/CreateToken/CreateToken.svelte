@@ -64,7 +64,7 @@
               `{"name":"${name}","symbol":"${symbol}","decimals":"${decimals}","authors":"[${author}]"}`
             ),
             +totalSupply * 10 ** +decimals,
-            !fixedTotalSupply
+            fixedTotalSupply
           )
           .send();
 
@@ -81,7 +81,7 @@
           symbol,
           decimals: +decimals,
           totalSupply: +totalSupply * 10 ** +decimals,
-          fixedSupply: !fixedTotalSupply,
+          fixedSupply: fixedTotalSupply,
           admin: $store.userAddress,
           authors: `[${author}]`
         };

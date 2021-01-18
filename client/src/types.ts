@@ -30,7 +30,8 @@ export type ModalType =
   | "confirmWTKredeem"
   | "confirmNewOrder"
   | "deleteOrder"
-  | "fulfillOrder";
+  | "fulfillOrder"
+  | "transfer";
 
 export type WalletType =
   | "tezbridge"

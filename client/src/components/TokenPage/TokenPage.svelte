@@ -1,13 +1,62 @@
 <script lang="ts">
   import { afterUpdate } from "svelte";
+  import { validateAddress } from "@taquito/utils";
   import store from "../../store";
   import TokenInfo from "./TokenInfo.svelte";
   import { Token } from "../../types";
   import { displayTokenAmount } from "../../utils";
+  import Modal from "../Modal/Modal.svelte";
 
   export let params;
 
   let paramToken: Token | undefined;
+  let openTransferModal = false;
+  let sendingTransfer = false;
+
+  const transfer = async (transferParams: {
+    tokenID: number;
+    recipient: string;
+    amount: number;
+  }): Promise<void> => {
+    let { tokenID, recipient, amount } = transferParams;
+    if (validateAddress(recipient) === 3 && !isNaN(+amount)) {
+      openTransferModal = false;
+      sendingTransfer = true;
+      //console.log(tokenID, recipient, amount);
+      try {
+        const op = await $store.ledgerInstance.methods
+          .transfer([
+            {
+              from_: $store.userAddress,
+              txs: [
+                {
+                  to_: recipient,
+                  token_id: tokenID,
+                  amount: +amount * 10 ** +paramToken.decimals
+                }
+              ]
+            }
+          ])
+          .send();
+        await op.confirmation();
+        const tokens = $store.userTokens.map(tk => {
+          if (tk.tokenID === tokenID) {
+            return {
+              ...tk,
+              balance: tk.balance - +amount * 10 ** +paramToken.decimals
+            };
+          } else {
+            return tk;
+          }
+        });
+        store.updateUserTokens(tokens);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        sendingTransfer = false;
+      }
+    }
+  };
 
   afterUpdate(() => {
     if (params.id) {
@@ -33,6 +82,79 @@
     }
   });
 </script>
+
+<style lang="scss">
+  main {
+    padding: 50px 0px;
+    height: 90%;
+    overflow: hidden;
+
+    .head {
+      padding: 20px 50px;
+    }
+
+    .body {
+      padding: 50px;
+      background-color: #edf2f7;
+      border-top: solid 3px #a0aec0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+
+      .tokens-grid {
+        display: grid;
+        grid-template-columns: 10% 20% 10% 20% 30% 10%;
+        grid-template-rows: auto;
+        align-items: center;
+        width: 90%;
+        background-color: white;
+        border-radius: 5px;
+
+        div {
+          padding: 20px 15px;
+        }
+      }
+
+      & :last-child {
+        border-bottom: none;
+      }
+    }
+  }
+
+  .param-token__wrapper {
+    height: 330px;
+  }
+
+  .param-token {
+    padding: 10px 20px;
+    margin-bottom: 40px;
+    background-color: white;
+    border-radius: 10px;
+    width: 300px;
+
+    div[class^="param-token"] {
+      padding: 10px;
+    }
+
+    .param-token__title {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+
+      .param-token__title__icon {
+        width: 30px;
+        margin: 0px 20px 0px 0px;
+      }
+    }
+
+    .param-token__buttons {
+      display: flex;
+      justify-content: space-around;
+    }
+  }
+</style>
 
 <main>
   <section class="head">
@@ -110,6 +232,16 @@
                   <button class="button green">Buy</button>
                 </a>
                 {#if balance && balance.toNumber() > 0}
+                  <button
+                    class={`button ${sendingTransfer ? "disabled" : "blue"}`}
+                    disabled={sendingTransfer}
+                    on:click={() => (openTransferModal = true)}>
+                    {#if sendingTransfer}
+                      <span>Transferring...</span><span class="spinner" />
+                    {:else}
+                      <span>Transfer</span>
+                    {/if}
+                  </button>
                   <a href={`#/exchange/sell/${paramToken.tokenID}`}>
                     <button class="button red">Sell</button>
                   </a>
@@ -129,7 +261,7 @@
       <div class="token-totalsupply"><strong>Total Supply</strong></div>
       <div class="token-admin"><strong>Admin</strong></div>
       <div class="token-extras"><strong>Extras</strong></div>
-      {#each $store.tokens as token}
+      {#each $store.tokens.reverse() as token}
         <TokenInfo {token} />
       {:else}
         <div />
@@ -142,76 +274,12 @@
     </div>
   </section>
 </main>
-
-<style lang="scss">
-  main {
-    padding: 50px 0px;
-    height: 90%;
-    overflow: hidden;
-
-    .head {
-      padding: 20px 50px;
-    }
-
-    .body {
-      padding: 50px;
-      background-color: #edf2f7;
-      border-top: solid 3px #a0aec0;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-
-      .tokens-grid {
-        display: grid;
-        grid-template-columns: 10% 20% 10% 20% 30% 10%;
-        grid-template-rows: auto;
-        align-items: center;
-        width: 90%;
-        background-color: white;
-        border-radius: 5px;
-
-        div {
-          padding: 20px 15px;
-        }
-      }
-
-      & :last-child {
-        border-bottom: none;
-      }
-    }
-  }
-
-  .param-token__wrapper {
-    height: 330px;
-  }
-
-  .param-token {
-    padding: 10px 20px;
-    margin-bottom: 40px;
-    background-color: white;
-    border-radius: 10px;
-    width: 300px;
-
-    div[class^="param-token"] {
-      padding: 10px;
-    }
-
-    .param-token__title {
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-
-      .param-token__title__icon {
-        width: 30px;
-        margin: 0px 20px 0px 0px;
-      }
-    }
-
-    .param-token__buttons {
-      display: flex;
-      justify-content: space-around;
-    }
-  }
-</style>
+<Modal
+  modalType="transfer"
+  payload={paramToken}
+  open={openTransferModal}
+  close={() => {
+    openTransferModal = false;
+  }}
+  confirm={transfer}
+/>

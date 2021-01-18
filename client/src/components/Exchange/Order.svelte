@@ -23,7 +23,7 @@
   const availableBalance = (tokenID: number, amount: number): boolean => {
     if (!$store.userAddress) return false;
 
-    const token = $store.userTokens.filter((tk) => tk.tokenID === tokenID);
+    const token = $store.userTokens.filter(tk => tk.tokenID === tokenID);
     if (token.length === 0) return false;
 
     if (token[0].balance < amount) {
@@ -39,7 +39,7 @@
       openFulfillOrder = false;
 
       const orders = $store.orderBook.filter(
-        (ord) => ord.order_id === order.order_id
+        ord => ord.order_id === order.order_id
       );
       if (orders.length === 1) {
         const order = orders[0];
@@ -62,7 +62,7 @@
           let tokens: UserToken[];
           if (
             $store.userTokens.filter(
-              (tk) => tk.tokenID === order.token_id_to_buy
+              tk => tk.tokenID === order.token_id_to_sell
             ).length === 0
           ) {
             // if users didn't have before the token they just bought
@@ -70,23 +70,23 @@
               ...$store.userTokens,
               {
                 ...$store.tokens.filter(
-                  (tk) => tk.tokenID === order.token_id_to_buy
+                  tk => tk.tokenID === order.token_id_to_sell
                 )[0],
-                balance: order.token_amount_to_buy,
-              },
+                balance: order.token_amount_to_sell
+              }
             ];
           } else {
             // if users already had the token
-            tokens = $store.userTokens.map((tk) => {
+            tokens = $store.userTokens.map(tk => {
               if (tk.tokenID === order.token_id_to_buy) {
                 return {
                   ...tk,
-                  balance: tk.balance - order.token_amount_to_buy,
+                  balance: tk.balance - order.token_amount_to_buy
                 };
               } else if (tk.tokenID === order.token_id_to_sell) {
                 return {
                   ...tk,
-                  balance: tk.balance + order.token_amount_to_sell,
+                  balance: tk.balance + order.token_amount_to_sell
                 };
               } else {
                 return tk;
@@ -96,9 +96,7 @@
           store.updateUserTokens(tokens);
           // removes order from order book
           store.updateOrderBook([
-            ...$store.orderBook.filter(
-              (ord) => ord.order_id !== order.order_id
-            ),
+            ...$store.orderBook.filter(ord => ord.order_id !== order.order_id)
           ]);
         } catch (error) {
           console.log(error);
@@ -121,7 +119,7 @@
       await op.confirmation();
       // removes order from local order book
       store.updateOrderBook([
-        ...$store.orderBook.filter((ord) => ord.order_id !== order.order_id),
+        ...$store.orderBook.filter(ord => ord.order_id !== order.order_id)
       ]);
     } catch (error) {
       console.log(error);
@@ -135,16 +133,29 @@
   <div>{order.order_id}</div>
   <div>{formatCreatedOn(order.created_on)}</div>
   <div>
-    <span>{displayTokenAmount(order.token_id_to_sell, order.token_amount_to_sell).toLocaleString('en-US')}
-      {getTokenSymbol(order.token_id_to_sell)}</span>
+    <span
+      >{displayTokenAmount(
+        order.token_id_to_sell,
+        order.token_amount_to_sell
+      ).toLocaleString("en-US")}
+      {getTokenSymbol(order.token_id_to_sell)}</span
+    >
   </div>
   <div>
     <span
-      style={$store.userAddress ? (availableBalance(order.token_id_to_buy, order.token_amount_to_buy) ? 'color:green' : 'color:red') : ''}>
-      {displayTokenAmount(order.token_id_to_buy, order.token_amount_to_buy).toLocaleString('en-US')}
-      {getTokenSymbol(order.token_id_to_buy)}</span>
+      style={$store.userAddress
+        ? availableBalance(order.token_id_to_buy, order.token_amount_to_buy)
+          ? "color:green"
+          : "color:red"
+        : ""}>
+      {displayTokenAmount(
+        order.token_id_to_buy,
+        order.token_amount_to_buy
+      ).toLocaleString("en-US")}
+      {getTokenSymbol(order.token_id_to_buy)}</span
+    >
   </div>
-  <div>{order.seller.slice(0, 7) + '...' + order.seller.slice(-7)}</div>
+  <div>{order.seller.slice(0, 7) + "..." + order.seller.slice(-7)}</div>
   <div>
     {#if $store.userAddress && $store.userAddress === order.seller}
       {#if loadingDeleteOrder}
@@ -156,8 +167,8 @@
           class="button red"
           on:click={() => {
             openDeleteOrder = true;
-          }}>
-          <span>Delete</span></button>
+          }}> <span>Delete</span></button
+        >
       {/if}
     {:else if loadingFulfillOrder}
       <button class="button disabled" disabled>
@@ -165,13 +176,21 @@
       </button>
     {:else}
       <button
-        class={`button ${$store.userAddress ? (availableBalance(order.token_id_to_buy, order.token_amount_to_buy) ? 'green' : 'red') : ''}`}
-        disabled={!$store.userAddress || !availableBalance(order.token_id_to_buy, order.token_amount_to_buy)}
+        class={`button ${
+          $store.userAddress
+            ? availableBalance(order.token_id_to_buy, order.token_amount_to_buy)
+              ? "green"
+              : "red"
+            : ""
+        }`}
+        disabled={!$store.userAddress ||
+          !availableBalance(order.token_id_to_buy, order.token_amount_to_buy)}
         on:click={() => {
           if ($store.userAddress) {
             openFulfillOrder = true;
           }
-        }}>Fulfill</button>
+        }}>Fulfill</button
+      >
     {/if}
   </div>
 </div>
@@ -182,12 +201,16 @@
   close={() => {
     openDeleteOrder = false;
   }}
-  confirm={deleteOrder} />
+  confirm={deleteOrder}
+/>
 <Modal
   modalType="fulfillOrder"
-  payload={order.order_id ? $store.orderBook.filter((ord) => ord.order_id === order.order_id)[0] : undefined}
+  payload={order.order_id
+    ? $store.orderBook.filter(ord => ord.order_id === order.order_id)[0]
+    : undefined}
   open={openFulfillOrder}
   close={() => {
     openFulfillOrder = false;
   }}
-  confirm={fulfillOrder} />
+  confirm={fulfillOrder}
+/>
