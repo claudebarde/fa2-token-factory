@@ -1,59 +1,12 @@
 <script lang="ts">
   import store from "../../store";
   import { displayTokenAmount } from "../../utils";
+  import Modal from "../Modal/Modal.svelte";
 
-  export let token;
+  export let token, index;
 
   let open = false;
 </script>
-
-<div class="token-id">
-  {#if $store.userTokens.filter(tk => tk.tokenID === token.tokenID).length === 1}
-    <strong>{token.tokenID}</strong>
-  {:else}
-    {token.tokenID}
-  {/if}
-</div>
-<div class="token-name">
-  <a href={`#/token/${token.tokenID}`}>{token.name}</a>
-</div>
-<div class="token-symbol">{token.symbol}</div>
-<div class="token-totalsupply">
-  {#if token.symbol === "wTK"}
-    wꜩ
-    {displayTokenAmount(token.tokenID, token.totalSupply).toLocaleString(
-      "en-US"
-    )}
-  {:else}
-    {displayTokenAmount(token.tokenID, token.totalSupply).toLocaleString(
-      "en-US"
-    )}
-  {/if}
-</div>
-<div class="token-admin">
-  <a
-    href={`https://${
-      $store.network === "local" || $store.network === "testnet"
-        ? "carthage."
-        : ""
-    }tzkt.io/${token.admin}`}
-    target="_blank"
-    rel="noopener noreferrer nofollow">
-    {`${token.admin.slice(0, 10)}...${token.admin.slice(-10)}`}
-  </a>
-</div>
-<div class="token-info">
-  <button on:click={() => (open = !open)}>Info</button>
-</div>
-<div class={`token-info-details ${open ? "open" : ""}`}>
-  {#each Object.keys(token) as key}
-    {#if !["tokenID", "decimals", "totalSupply", "name", "symbol", "admin"].includes(key)}
-      <p>{key}: {token[key]}</p>
-    {/if}
-  {:else}
-    <p>No additional information</p>
-  {/each}
-</div>
 
 <style lang="scss">
   div {
@@ -83,8 +36,7 @@
 
   .token-info-details {
     grid-column: 1 / 7;
-    border-bottom: solid 1px #a0aec0;
-    height: 0px;
+    height: 1px;
     padding: 0px;
     overflow: hidden;
     transition-delay: 0.2s;
@@ -94,7 +46,59 @@
       height: auto;
       padding: 20px 15px;
       overflow: auto;
-      border-top: solid 1px #a0aec0;
     }
   }
+
+  .light-bg {
+    background-color: lighten(#edf2f7, 3);
+  }
 </style>
+
+<div class={`token-id ${index % 2 === 0 ? "light-bg" : ""}`}>
+  {#if $store.userTokens.filter(tk => tk.tokenID === token.tokenID).length === 1}
+    <strong>{token.tokenID}</strong>
+  {:else}
+    {token.tokenID}
+  {/if}
+</div>
+<div class={`token-name ${index % 2 === 0 ? "light-bg" : ""}`}>
+  <a href={`#/token/${token.tokenID}`}>{token.name}</a>
+</div>
+<div class={`token-symbol ${index % 2 === 0 ? "light-bg" : ""}`}>
+  {token.symbol}
+</div>
+<div class={`token-total-supply ${index % 2 === 0 ? "light-bg" : ""}`}>
+  {#if token.symbol === "wTK"}
+    wꜩ
+    {displayTokenAmount(token.tokenID, token.totalSupply).toLocaleString(
+      "en-US"
+    )}
+  {:else}
+    {displayTokenAmount(token.tokenID, token.totalSupply).toLocaleString(
+      "en-US"
+    )}
+  {/if}
+</div>
+<div class={`token-admin ${index % 2 === 0 ? "light-bg" : ""}`}>
+  <a
+    href={`https://${
+      $store.network === "local" || $store.network === "testnet"
+        ? "carthage."
+        : ""
+    }tzkt.io/${token.admin}`}
+    target="_blank"
+    rel="noopener noreferrer nofollow">
+    {`${token.admin.slice(0, 10)}...${token.admin.slice(-10)}`}
+  </a>
+</div>
+<div class={`token-info ${index % 2 === 0 ? "light-bg" : ""}`}>
+  <button on:click={() => (open = !open)}>Info</button>
+</div>
+<Modal
+  modalType="tokenMetadata"
+  payload={token}
+  {open}
+  close={() => {
+    open = false;
+  }}
+/>

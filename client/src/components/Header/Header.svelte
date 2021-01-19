@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, afterUpdate } from "svelte";
   import { TezosToolkit } from "@taquito/taquito";
   import store from "../../store";
   import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
@@ -45,7 +45,6 @@
   };
 
   const initTezbridgeWallet = async () => {
-    store.updateUserTokens([]);
     const wallet = new TezBridgeWallet();
     const userAddress = await wallet.getPKH();
     store.updateWallet(wallet);
@@ -104,7 +103,6 @@
     store.updateWallet(undefined);
     store.updateWalletType(undefined);
     store.updateUserAddress(undefined);
-    store.updateUserTokens([]);
     $store.Tezos.setWalletProvider(undefined);
   };
 
@@ -142,6 +140,13 @@
 
     if ($store.userAddress) {
       await setUserTokens($store.userAddress);
+    }
+  });
+
+  afterUpdate(() => {
+    if (!$store.userAddress && $store.userTokens.length > 0) {
+      console.log("deleting user tokens");
+      store.updateUserTokens([]);
     }
   });
 </script>

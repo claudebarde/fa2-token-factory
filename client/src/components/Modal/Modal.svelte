@@ -213,37 +213,52 @@
               &nbsp;
             {/if}
           </p>
+        {:else if modalType === "tokenMetadata"}
+          <h3>Token metadata for {payload.name}</h3>
+          {#each Object.keys(payload) as prop}
+            {#if !["tokenID", "name", "symbol", "totalSupply", "admin"].includes(prop)}
+              <p>{prop}: {payload[prop]}</p>
+            {/if}
+          {/each}
         {:else}This is an empty modal{/if}
       </div>
       <div class="modal__footer">
-        <button
-          class={`button ${
-            modalType === "transfer" && (!transferRecipient || !transferAmount)
-              ? "disabled"
-              : "green"
-          }`}
-          disabled={modalType === "transfer" &&
-            (!transferRecipient || !transferAmount)}
-          on:click={() => {
-            if (modalType === "transfer") {
-              confirm({
-                tokenID: payload.tokenID,
-                recipient: transferRecipient,
-                amount: transferAmount
-              });
-            } else {
-              if (confirm) confirm();
-            }
-          }}>Confirm</button
-        >&nbsp;
+        {#if modalType !== "tokenMetadata"}
+          <button
+            class={`button ${
+              modalType === "transfer" &&
+              (!transferRecipient || !transferAmount)
+                ? "disabled"
+                : "green"
+            }`}
+            disabled={modalType === "transfer" &&
+              (!transferRecipient || !transferAmount)}
+            on:click={() => {
+              if (modalType === "transfer") {
+                confirm({
+                  tokenID: payload.tokenID,
+                  recipient: transferRecipient,
+                  amount: transferAmount
+                });
+              } else {
+                if (confirm) confirm();
+              }
+            }}>Confirm</button
+          >&nbsp;
+        {/if}
         <button
           class="button red"
           on:click={() => {
             transferAmount = "";
             transferRecipient = "";
             close();
-          }}>Cancel</button
-        >
+          }}>
+          {#if modalType === "tokenMetadata"}
+            Close
+          {:else}
+            Cancel
+          {/if}
+        </button>
       </div>
     </div>
   </div>

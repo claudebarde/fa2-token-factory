@@ -31,7 +31,8 @@ export type ModalType =
   | "confirmNewOrder"
   | "deleteOrder"
   | "fulfillOrder"
-  | "transfer";
+  | "transfer"
+  | "tokenMetadata";
 
 export type WalletType =
   | "tezbridge"

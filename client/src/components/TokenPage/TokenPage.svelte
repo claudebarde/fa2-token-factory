@@ -79,6 +79,8 @@
           paramToken = undefined;
         }
       }
+    } else {
+      paramToken = undefined;
     }
   });
 </script>
@@ -111,6 +113,7 @@
         width: 90%;
         background-color: white;
         border-radius: 5px;
+        overflow: auto;
 
         div {
           padding: 20px 15px;
@@ -261,8 +264,13 @@
       <div class="token-totalsupply"><strong>Total Supply</strong></div>
       <div class="token-admin"><strong>Admin</strong></div>
       <div class="token-extras"><strong>Extras</strong></div>
-      {#each $store.tokens.reverse() as token}
-        <TokenInfo {token} />
+    </div>
+    <div
+      class="tokens-grid"
+      style={paramToken ? "max-height:350px" : "max-height: 700px"}
+    >
+      {#each $store.tokens.reverse() as token, i}
+        <TokenInfo {token} index={i} />
       {:else}
         <div />
         <div />

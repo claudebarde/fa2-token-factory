@@ -35,7 +35,7 @@ const initialState: State = {
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1GDZTypYYVLxaUag5K6Y1Y5ip4VszojBmi",
+    testnet: "KT1V1vW9sbjFEb97VnSSedg3vSrNpi5HQPWU",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,
@@ -73,7 +73,12 @@ const state = {
     store.update(store => ({ ...store, exchangeStorage: storage }));
   },
   updateTokens: (tokens: Token[]) => {
-    store.update(store => ({ ...store, tokens }));
+    // sorts token alphabetically by symbol
+    const newTokens = [...tokens];
+    newTokens.sort((a, b) =>
+      a.symbol > b.symbol ? 1 : b.symbol > a.symbol ? -1 : 0
+    );
+    store.update(store => ({ ...store, tokens: newTokens }));
   },
   formatToken: async (tokenId: number, ledger: any): Promise<Token | null> => {
     const token = await ledger.token_metadata.get(tokenId.toString());
@@ -113,7 +118,12 @@ const state = {
     };
   },
   updateUserTokens: (tokens: UserToken[]) => {
-    store.update(store => ({ ...store, userTokens: tokens }));
+    // sorts token alphabetically by symbol
+    const newTokens = [...tokens];
+    newTokens.sort((a, b) =>
+      a.symbol > b.symbol ? 1 : b.symbol > a.symbol ? -1 : 0
+    );
+    store.update(store => ({ ...store, userTokens: newTokens }));
   },
   updateOrderBook: (orders: OrderEntry[]) => {
     store.update(store => ({ ...store, orderBook: orders }));
