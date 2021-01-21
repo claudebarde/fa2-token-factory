@@ -315,6 +315,83 @@
   });
 </script>
 
+<style lang="scss">
+  main {
+    padding: 50px 0px;
+    height: 90%;
+    overflow: hidden;
+
+    .head {
+      padding: 20px 50px;
+    }
+
+    .body {
+      padding: 50px;
+      background-color: #edf2f7;
+      border-top: solid 3px #a0aec0;
+      height: 85%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+
+      input[type="text"] {
+        padding: 10px;
+        outline: none;
+        appearance: none;
+        border: none;
+        padding: 10px;
+        margin: 0px;
+        border-radius: 5px;
+        color: #4a5568;
+        font-family: "Montserrat", sans-serif;
+        background-color: #ebf8ff;
+      }
+
+      .wtk-actions {
+        display: flex;
+        justify-content: space-between;
+        width: 90%;
+        background-color: white;
+        border-radius: 5px;
+        margin: 0px 0px 20px 0px;
+
+        .buy-wtk,
+        .redeem-wtk {
+          & > div {
+            padding: 20px 15px;
+          }
+        }
+      }
+
+      .new-order {
+        width: 90%;
+        background-color: white;
+        border-radius: 5px;
+        margin: 0px 0px 20px 0px;
+
+        & > div {
+          padding: 20px 15px;
+        }
+
+        .new-order__select {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+      }
+
+      .orders-wrapper {
+        display: grid;
+        overflow: auto;
+        width: 90%;
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
+      }
+    }
+  }
+</style>
+
 <main>
   <section class="head">
     <h1>Exchange tokens</h1>
@@ -369,7 +446,12 @@
       <div class="new-order__select">
         <div>Sell:</div>
         <div class="dropdown">
-          <div class="dropdown-title">
+          <div
+            class="dropdown-title"
+            style={tokenToSell && tokenToBuy && tokenToSell === tokenToBuy
+              ? "border-color:#e53e3e"
+              : ""}
+          >
             {!tokenToSell ? "Select" : getTokenSymbol(tokenToSell)}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
@@ -393,7 +475,12 @@
         </div>
         <div>Buy:</div>
         <div class="dropdown">
-          <div class="dropdown-title">
+          <div
+            class="dropdown-title"
+            style={tokenToSell && tokenToBuy && tokenToSell === tokenToBuy
+              ? "border-color:#e53e3e"
+              : ""}
+          >
             {!tokenToBuy ? "Select" : getTokenSymbol(tokenToBuy)}
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
@@ -473,80 +560,3 @@
   confirm={confirmNewOrder}
 />
 <ViewTransaction {opHash} show={viewTxToast} />
-
-<style lang="scss">
-  main {
-    padding: 50px 0px;
-    height: 90%;
-    overflow: hidden;
-
-    .head {
-      padding: 20px 50px;
-    }
-
-    .body {
-      padding: 50px;
-      background-color: #edf2f7;
-      border-top: solid 3px #a0aec0;
-      height: 85%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-
-      input[type="text"] {
-        padding: 10px;
-        outline: none;
-        appearance: none;
-        border: none;
-        padding: 10px;
-        margin: 0px;
-        border-radius: 5px;
-        color: #4a5568;
-        font-family: "Montserrat", sans-serif;
-        background-color: #ebf8ff;
-      }
-
-      .wtk-actions {
-        display: flex;
-        justify-content: space-between;
-        width: 90%;
-        background-color: white;
-        border-radius: 5px;
-        margin: 0px 0px 20px 0px;
-
-        .buy-wtk,
-        .redeem-wtk {
-          & > div {
-            padding: 20px 15px;
-          }
-        }
-      }
-
-      .new-order {
-        width: 90%;
-        background-color: white;
-        border-radius: 5px;
-        margin: 0px 0px 20px 0px;
-
-        & > div {
-          padding: 20px 15px;
-        }
-
-        .new-order__select {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-      }
-
-      .orders-wrapper {
-        display: grid;
-        overflow: auto;
-        width: 90%;
-        border-bottom-left-radius: 5px;
-        border-bottom-right-radius: 5px;
-      }
-    }
-  }
-</style>
