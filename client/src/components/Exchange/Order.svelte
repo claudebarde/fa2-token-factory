@@ -129,6 +129,38 @@
   };
 </script>
 
+<style lang="scss">
+  .warning-wrapper {
+    position: relative;
+
+    .warning-message {
+      position: absolute;
+      top: -20px;
+      left: -220px;
+      font-size: 0.7rem;
+      width: 200px;
+      z-index: 1000;
+      border: solid 1px black;
+      border-radius: 3px;
+      background-color: white;
+      padding: 5px;
+      text-align: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0s, opacity 0.3s linear;
+    }
+
+    img {
+      cursor: pointer;
+
+      &:hover + div {
+        visibility: visible;
+        opacity: 1;
+      }
+    }
+  }
+</style>
+
 <div class="exchange-grid orders">
   <div>{order.order_id}</div>
   <div>{formatCreatedOn(order.created_on)}</div>
@@ -147,7 +179,8 @@
         ? availableBalance(order.token_id_to_buy, order.token_amount_to_buy)
           ? "color:green"
           : "color:red"
-        : ""}>
+        : ""}
+    >
       {displayTokenAmount(
         order.token_id_to_buy,
         order.token_amount_to_buy
@@ -156,7 +189,7 @@
     >
   </div>
   <div>{order.seller.slice(0, 7) + "..." + order.seller.slice(-7)}</div>
-  <div>
+  <div style="display:flex;align-items:center;justify-content:space-between">
     {#if $store.userAddress && $store.userAddress === order.seller}
       {#if loadingDeleteOrder}
         <button class="button red">
@@ -167,7 +200,9 @@
           class="button red"
           on:click={() => {
             openDeleteOrder = true;
-          }}> <span>Delete</span></button
+          }}
+        >
+          <span>Delete</span></button
         >
       {/if}
     {:else if loadingFulfillOrder}
@@ -192,6 +227,19 @@
         }}>Fulfill</button
       >
     {/if}
+    {#await $store.ledgerStorage.ledger.get({
+      owner: order.seller,
+      token_id: order.token_id_to_sell
+    }) then balance}
+      {#if balance.toNumber() > order.token_amount_to_sell}
+        <div class="warning-wrapper">
+          <img src="images/alert-triangle.svg" alt="warning" />
+          <div class="warning-message">
+            This user doesn't have enough tokens to sell anymore
+          </div>
+        </div>
+      {/if}
+    {/await}
   </div>
 </div>
 <Modal

@@ -4,7 +4,11 @@
   import store from "../../store";
   import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
   import { BeaconWallet } from "@taquito/beacon-wallet";
-  import { NetworkType } from "@airgap/beacon-sdk";
+  import {
+    NetworkType,
+    BeaconEvent,
+    defaultEventCallbacks
+  } from "@airgap/beacon-sdk";
   import BigNumber from "bignumber.js";
   import { Token, UserToken } from "../../types";
   import { displayTokenAmount } from "../../utils";
@@ -57,31 +61,15 @@
   const initBeacon = async () => {
     const wallet = new BeaconWallet({
       name: "Tezos Token Factory",
+      preferredNetwork: NetworkType.DELPHINET,
+      disableDefaultEvents: true, // Disable all events / UI. This also disables the pairing alert.
       eventHandlers: {
-        /*PAIR_INIT: {
-          handler: async (data) => {
-            console.log("pair init:", data);
-          },
-        },*/
-        PERMISSION_REQUEST_SENT: {
-          handler: async data => {
-            console.log("permission request success:", data);
-          }
+        // To keep the pairing alert, we have to add the following default event handlers back
+        [BeaconEvent.PAIR_INIT]: {
+          handler: defaultEventCallbacks.PAIR_INIT
         },
-        PERMISSION_REQUEST_SUCCESS: {
-          handler: async data => {
-            console.log("permission request success:", data);
-          }
-        },
-        OPERATION_REQUEST_SENT: {
-          handler: async data => {
-            console.log("permission request success:", data);
-          }
-        },
-        OPERATION_REQUEST_SUCCESS: {
-          handler: async data => {
-            console.log("permission request success:", data);
-          }
+        [BeaconEvent.PAIR_SUCCESS]: {
+          handler: defaultEventCallbacks.PAIR_SUCCESS
         }
       }
     });
@@ -140,6 +128,16 @@
 
     if ($store.userAddress) {
       await setUserTokens($store.userAddress);
+    }
+
+    // checks if previous Beacon connection is available
+    if (window.localStorage) {
+      const beaconPreservedState = window.localStorage.getItem(
+        "beacon:sdk-matrix-preserved-state"
+      );
+      if (beaconPreservedState) {
+        console.log(beaconPreservedState);
+      }
     }
   });
 
@@ -346,7 +344,8 @@
             $store.network === "testnet" ? "delphinet" : "mainnet"
           }/${$store.ledgerAddress[$store.network]}/operations`}
           target="_blank"
-          rel="noreferrer noopener nofollow">
+          rel="noreferrer noopener nofollow"
+        >
           <div
             id="ledger-contract"
             class={$store.ledgerInstance === undefined ? "red" : "green"}
@@ -362,7 +361,8 @@
             $store.network === "testnet" ? "delphinet" : "mainnet"
           }/${$store.exchangeAddress[$store.network]}/operations`}
           target="_blank"
-          rel="noreferrer noopener nofollow">
+          rel="noreferrer noopener nofollow"
+        >
           <div
             id="exchange-contract"
             class={$store.exchangeInstance === undefined ? "red" : "green"}

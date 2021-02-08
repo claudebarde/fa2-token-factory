@@ -57,7 +57,7 @@ a {
 
       input[type="text"] {
         padding: 10px;
-        border: none;
+        border: solid 1px transparent;
         border-radius: 3px;
         background-color: #edf2f7;
         outline: none;
@@ -226,7 +226,7 @@ $dropdown-min-width: 70px;
   width: 90%;
   background-color: white;
 
-  div {
+  & > div {
     padding: 20px 15px;
   }
 

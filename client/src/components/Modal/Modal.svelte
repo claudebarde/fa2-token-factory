@@ -128,7 +128,9 @@
           transferRecipient = "";
           close();
         }}
-      ><span>&#10006;</span></div>
+      >
+        <span>&#10006;</span>
+      </div>
       <div class="modal__body">
         {#if modalType === "confirmWTKbuy"}
           <p>Would you like to buy {payload} wTK tokens?</p>
@@ -137,18 +139,16 @@
             You are about to create a new exchange order with the following
             details:
           </p>
-          {#await calculateExchangeRate() then val}
-            <p>
-              Exchange:
-              {payload.tokenToSellAmount}
-              {$store.tokens.filter(tk => tk.tokenID === payload.tokenToSell)[0]
-                .symbol}
-              for
-              {payload.tokenToBuyAmount}
-              {$store.tokens.filter(tk => tk.tokenID === payload.tokenToBuy)[0]
-                .symbol}
-            </p>
-          {/await}
+          <p>
+            Exchange:
+            {(+payload.tokenToSellAmount).toLocaleString("en-US")}
+            {$store.tokens.filter(tk => tk.tokenID === payload.tokenToSell)[0]
+              .symbol}
+            for
+            {(+payload.tokenToBuyAmount).toLocaleString("en-US")}
+            {$store.tokens.filter(tk => tk.tokenID === payload.tokenToBuy)[0]
+              .symbol}
+          </p>
           <p>Confirm this new order?</p>
         {:else if modalType === "deleteOrder"}
           <p>Would you like to delete the order number {payload}?</p>
@@ -252,7 +252,8 @@
             transferAmount = "";
             transferRecipient = "";
             close();
-          }}>
+          }}
+        >
           {#if modalType === "tokenMetadata"}
             Close
           {:else}

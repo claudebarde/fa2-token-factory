@@ -100,9 +100,9 @@ type token_metadata_param =
 type mint_tokens_params = 
 [@layout:comb]
 {
-    metadata: bytes;
+    metadata: (string * bytes) list;
     total_supply: nat;
-    can_mint_more: bool;
+    fixed_supply: bool;
 }
 
 type mint_more_tokens_params = 
@@ -921,7 +921,8 @@ type ledger = ((address * token_id), nat) big_map
 type token_total_supply = (token_id, nat) big_map
 
 (* token_id -> token_metadata *)
-type token_metadata_storage = (token_id, (token_id * (string, bytes) map)) big_map
+type token_info = token_id * (string, bytes) map
+type token_metadata_storage = (token_id, token_info) big_map
 
 type multi_token_storage = {
   ledger : ledger;
@@ -942,9 +943,13 @@ let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
     (* Creates new token id *)
     let new_token_id: token_id = s.last_token_id + 1n in
     (* Creates token metadata *)
-    let token_metadata_map: (string, bytes) map = Map.literal [
-        ("", p.metadata)
-    ] in
+    let token_metadata_map: (string, bytes) map = 
+        List.fold 
+            (fun (mtd_map, mtd_element: (string, bytes) map * (string * bytes)) ->
+                Map.add mtd_element.0 mtd_element.1 mtd_map) 
+            p.metadata 
+            (Map.empty: (string, bytes) map)
+    in
     let new_token_metadata: token_metadata_storage =
         Big_map.add new_token_id (new_token_id, token_metadata_map) s.token_metadata in
     (* Creates new token total supply *)
@@ -957,7 +962,7 @@ let mint_tokens ((p, s): mint_tokens_params * multi_token_storage) =
     { s with ledger = new_ledger; 
             token_total_supply = total_supply; 
             token_metadata = new_token_metadata;
-            token_admins = Big_map.add new_token_id (Tezos.sender, p.can_mint_more) s.token_admins;
+            token_admins = Big_map.add new_token_id (Tezos.sender, p.fixed_supply) s.token_admins;
             last_token_id = new_token_id; }
 
 let mint_more_tokens ((p, s): mint_more_tokens_params * multi_token_storage) =
@@ -991,7 +996,7 @@ let mint_more_tokens ((p, s): mint_more_tokens_params * multi_token_storage) =
         
 
 
-# 30 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 31 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 # 1 "./multi_asset/ligo/src/../fa2/burn_tokens.mligo" 1
 let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_token_storage =
@@ -1032,7 +1037,7 @@ let burn_tokens ((params, s): (token_id * nat) * multi_token_storage): multi_tok
                     token_total_supply = Big_map.update token_id (Some (current_supply)) s.token_total_supply }
 
 
-# 31 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 32 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 # 1 "./multi_asset/ligo/src/../fa2/remote_exchange.mligo" 1
 (* Creates a new order in the remote exchange *)
@@ -1191,7 +1196,7 @@ let redeem_xtz_wrapper ((xtz_amount, s): nat * multi_token_storage): operation *
     (op, { s with 
         ledger = new_ledger; 
         token_total_supply = Big_map.update wrapper_id (Some (new_token_total_supply)) s.token_total_supply })
-# 32 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
+# 33 "./multi_asset/ligo/src/fa2_multi_token.mligo" 2
 
 let get_balance_amt (key, ledger : (address * nat) * ledger) : nat =
   let bal_opt = Big_map.find_opt key ledger in

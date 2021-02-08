@@ -28,9 +28,10 @@ const initialStorage = {
     [wrapperId]: {
       0: wrapperId,
       1: MichelsonMap.fromLiteral({
-        "": char2Bytes(
-          `{"name":"wToken","symbol":"wTK","decimals":"6","authors":"[Claude Barde]"}`
-        )
+        name: char2Bytes("wToken"),
+        symbol: char2Bytes("wTK"),
+        decimals: char2Bytes("6"),
+        authors: char2Bytes("[@claudebarde]")
       })
     }
   }),

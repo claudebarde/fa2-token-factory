@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import store from "../../store";
-  import { OrderEntry, UserToken } from "../../types";
+  import { OrderEntry, UserToken, ExchangeError } from "../../types";
   import Modal from "../Modal/Modal.svelte";
   import Order from "./Order.svelte";
   import { displayTokenAmount } from "../../utils";
@@ -23,6 +23,8 @@
   let openFulfillOrder = false;
   let viewTxToast = false;
   let opHash = "";
+  let exchangeError: ExchangeError;
+  let ordersFetched = false;
 
   const displayMaxAmount = (tokenID: number): string => {
     const token = $store.userTokens.filter(tk => tk.tokenID === tokenID)[0];
@@ -164,10 +166,26 @@
       $store.userAddress &&
       tokenToBuy > 0 &&
       tokenToSell > 0 &&
+      tokenToSellAmount.length > 0 &&
+      tokenToBuyAmount.length > 0 &&
       !isNaN(+tokenToSellAmount) &&
-      !isNaN(+tokenToBuyAmount)
+      !isNaN(+tokenToBuyAmount) &&
+      +tokenToSellAmount !== 0 &&
+      +tokenToBuyAmount !== 0
     ) {
       openConfirmNewOrder = true;
+    } else {
+      if (tokenToSell === 0) {
+        exchangeError = ExchangeError.NOSELLTOKEN;
+      } else if (tokenToBuy === 0) {
+        exchangeError = ExchangeError.NOBUYTOKEN;
+      } else if (tokenToBuy === tokenToSell) {
+        exchangeError = ExchangeError.IDENTICALBUYANDSELL;
+      } else if (isNaN(+tokenToSellAmount) || +tokenToSellAmount === 0) {
+        exchangeError = ExchangeError.INVALIDSELLVALUE;
+      } else if (isNaN(+tokenToBuyAmount) || +tokenToBuyAmount === 0) {
+        exchangeError = ExchangeError.INVALIDBUYVALUE;
+      }
     }
   };
 
@@ -274,6 +292,7 @@
         store.updateOrderBook(ordersToLoad);
       }
     }
+    ordersFetched = true;
   };
 
   onMount(async () => {
@@ -309,7 +328,7 @@
         store.updateOrderBook([]);
         await fetchExchangeOrders();
       } else {
-        setTimeout(fetchExchangeOrders, 2000);
+        setTimeout(fetchExchangeOrders, 1000);
       }
     }
   });
@@ -339,7 +358,7 @@
         padding: 10px;
         outline: none;
         appearance: none;
-        border: none;
+        border: solid 1px transparent;
         padding: 10px;
         margin: 0px;
         border-radius: 5px;
@@ -448,7 +467,8 @@
         <div class="dropdown">
           <div
             class="dropdown-title"
-            style={tokenToSell && tokenToBuy && tokenToSell === tokenToBuy
+            style={exchangeError === ExchangeError.NOSELLTOKEN ||
+            exchangeError === ExchangeError.IDENTICALBUYANDSELL
               ? "border-color:#e53e3e"
               : ""}
           >
@@ -457,7 +477,12 @@
           </div>
           <div class="dropdown-menu">
             {#each $store.userTokens as token}
-              <div on:click={() => (tokenToSell = token.tokenID)}>
+              <div
+                on:click={() => {
+                  tokenToSell = token.tokenID;
+                  exchangeError = undefined;
+                }}
+              >
                 {token.symbol}
               </div>
             {:else}
@@ -471,13 +496,18 @@
             type="text"
             bind:value={tokenToSellAmount}
             placeholder={tokenToSell > 0 ? displayMaxAmount(tokenToSell) : ""}
+            style={exchangeError === ExchangeError.INVALIDSELLVALUE
+              ? "border-color:#e53e3e"
+              : ""}
+            on:input={() => (exchangeError = undefined)}
           />
         </div>
         <div>Buy:</div>
         <div class="dropdown">
           <div
             class="dropdown-title"
-            style={tokenToSell && tokenToBuy && tokenToSell === tokenToBuy
+            style={exchangeError === ExchangeError.NOBUYTOKEN ||
+            exchangeError === ExchangeError.IDENTICALBUYANDSELL
               ? "border-color:#e53e3e"
               : ""}
           >
@@ -486,7 +516,12 @@
           </div>
           <div class="dropdown-menu">
             {#each $store.tokens as token}
-              <div on:click={() => (tokenToBuy = token.tokenID)}>
+              <div
+                on:click={() => {
+                  tokenToBuy = token.tokenID;
+                  exchangeError = undefined;
+                }}
+              >
                 {token.symbol}
               </div>
             {:else}
@@ -494,7 +529,16 @@
             {/each}
           </div>
         </div>
-        <div>Amount: <input type="text" bind:value={tokenToBuyAmount} /></div>
+        <div>
+          Amount: <input
+            type="text"
+            bind:value={tokenToBuyAmount}
+            style={exchangeError === ExchangeError.INVALIDBUYVALUE
+              ? "border-color:#e53e3e"
+              : ""}
+            on:input={() => (exchangeError = undefined)}
+          />
+        </div>
         <div>
           {#if !$store.userAddress}
             <button class="button disabled" disabled>Connect your wallet</button
@@ -503,7 +547,8 @@
             <button
               class={`button ${loadingConfirmNewOrder ? "disabled" : "blue"}`}
               disabled={loadingConfirmNewOrder}
-              on:click={createNewOrder}>
+              on:click={createNewOrder}
+            >
               {#if loadingConfirmNewOrder}
                 <span>Confirming...</span><span class="spinner" />
               {:else}<span>Confirm</span>{/if}
@@ -531,9 +576,19 @@
           passOpHash={hash => (opHash = hash)}
         />
       {:else}
-        <div
-          style="width:100%;text-align:center;padding: 20px;background-color:white"
-        >No order yet!</div>
+        {#if ordersFetched}
+          <div
+            style="width:100%;text-align:center;padding: 20px;background-color:white"
+          >
+            No order yet!
+          </div>
+        {:else}
+          <div
+            style="width:100%;text-align:center;padding: 20px;background-color:white"
+          >
+            Fetching the orders book...
+          </div>
+        {/if}
       {/each}
     </div>
   </section>

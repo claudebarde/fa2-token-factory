@@ -20,38 +20,21 @@
   let opHash = "";
   let viewTxToast = false;
 
-  const isFormComplete = (
-    name,
-    symbol,
-    author,
-    totalSupply,
-    decimals,
-    fixedTotalSupply
-  ) => {
+  const isFormComplete = (name, symbol, author, totalSupply, decimals) => {
     return (
       name &&
       symbol &&
       author &&
-      fixedTotalSupply &&
       symbol.length <= 5 &&
       totalSupply &&
       !isNaN(+totalSupply) &&
-      decimals &&
+      !!decimals &&
       !isNaN(+decimals)
     );
   };
 
   const createNewToken = async () => {
-    if (
-      isFormComplete(
-        name,
-        symbol,
-        author,
-        totalSupply,
-        decimals,
-        fixedTotalSupply
-      )
-    ) {
+    if (isFormComplete(name, symbol, author, totalSupply, decimals)) {
       inputError = false;
       loading = true;
       // sends details to smart contract
@@ -60,9 +43,12 @@
 
         const op = await $store.ledgerInstance.methods
           .mint_tokens(
-            char2Bytes(
-              `{"name":"${name}","symbol":"${symbol}","decimals":"${decimals}","authors":"[${author}]"}`
-            ),
+            [
+              { 0: "name", 1: char2Bytes(name) },
+              { 0: "symbol", 1: char2Bytes(symbol) },
+              { 0: "decimals", 1: char2Bytes(decimals) },
+              { 0: "authors", 1: char2Bytes(`[${author}]`) }
+            ],
             +totalSupply * 10 ** +decimals,
             fixedTotalSupply
           )
@@ -115,6 +101,39 @@
     }
   };
 </script>
+
+<style lang="scss">
+  main {
+    padding: 50px 0px;
+    height: 90%;
+    overflow: hidden;
+
+    .head {
+      padding: 20px 50px;
+    }
+
+    .body {
+      padding: 50px;
+      background-color: #edf2f7;
+      border-top: solid 3px #a0aec0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+  }
+
+  #fixed-total-supply {
+    float: right;
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      appearance: none;
+    }
+  }
+</style>
 
 <main>
   <section class="head">
@@ -201,14 +220,7 @@
             {:else}
               <button
                 class={`button ${
-                  isFormComplete(
-                    name,
-                    symbol,
-                    author,
-                    totalSupply,
-                    decimals,
-                    fixedTotalSupply
-                  )
+                  isFormComplete(name, symbol, author, totalSupply, decimals)
                     ? "green"
                     : "disabled"
                 }`}
@@ -217,8 +229,7 @@
                   symbol,
                   author,
                   totalSupply,
-                  decimals,
-                  fixedTotalSupply
+                  decimals
                 )}
                 on:click={createNewToken}>Confirm</button
               >
@@ -232,36 +243,3 @@
   </section>
 </main>
 <ViewTransaction {opHash} show={viewTxToast} />
-
-<style lang="scss">
-  main {
-    padding: 50px 0px;
-    height: 90%;
-    overflow: hidden;
-
-    .head {
-      padding: 20px 50px;
-    }
-
-    .body {
-      padding: 50px;
-      background-color: #edf2f7;
-      border-top: solid 3px #a0aec0;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-    }
-  }
-
-  #fixed-total-supply {
-    float: right;
-    font-size: 0.8rem;
-    cursor: pointer;
-
-    input[type="checkbox"] {
-      appearance: none;
-    }
-  }
-</style>

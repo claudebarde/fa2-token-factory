@@ -40,3 +40,11 @@ export type WalletType =
   | "beacon"
   | "kukai"
   | undefined;
+
+export enum ExchangeError {
+  NOBUYTOKEN,
+  NOSELLTOKEN,
+  IDENTICALBUYANDSELL,
+  INVALIDSELLVALUE,
+  INVALIDBUYVALUE
+}
