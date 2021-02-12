@@ -35,10 +35,10 @@
     "webpack-dev-server": "^3.11.0"
   },
   "dependencies": {
-    "@taquito/beacon-wallet": "^8.0.1-RC.2",
-    "@taquito/taquito": "^8.0.1-RC.2",
-    "@taquito/tezbridge-wallet": "^8.0.1-RC.2",
-    "@taquito/tzip16": "^8.0.1-RC.2",
+    "@taquito/beacon-wallet": "^8.0.1-beta.1",
+    "@taquito/taquito": "^8.0.1-beta.1",
+    "@taquito/tezbridge-wallet": "^8.0.1-beta.1",
+    "@taquito/tzip16": "^8.0.1-beta.1",
     "file-loader": "^6.2.0",
     "serve": "^11.3.2",
     "svelte-spa-router": "^3.0.5"
