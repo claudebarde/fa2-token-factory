@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, afterUpdate, onDestroy } from "svelte";
   import store from "../../store";
   import { OrderEntry, UserToken, ExchangeError } from "../../types";
   import Modal from "../Modal/Modal.svelte";
@@ -31,7 +31,7 @@
     if (token) {
       const balance = displayTokenAmount(token.tokenID, token.balance);
 
-      return "Max: " + balance.toString();
+      return "Max: " + balance.toLocaleString("en-US");
     } else {
       return "";
     }
@@ -259,7 +259,7 @@
   const fetchExchangeOrders = async () => {
     const exchangeBookId = $store.exchangeStorage.order_book.id.toNumber();
     const url = `https://api.better-call.dev/v1/bigmap/${
-      $store.network === "testnet" ? "delphinet" : $store.network
+      $store.network === "testnet" ? "edo2net" : $store.network
     }/${exchangeBookId}/keys`;
     const response = await fetch(url);
     const data = await response.json();
@@ -295,7 +295,7 @@
     ordersFetched = true;
   };
 
-  onMount(async () => {
+  /*onMount(async () => {
     if ($store.network === "local") {
       const orderPromises: Promise<any>[] = [];
       for (
@@ -323,14 +323,25 @@
             store.updateOrderBook([order, ...$store.orderBook]);
           });
       }
-    } else {
-      if ($store.orderBook && $store.exchangeStorage) {
-        store.updateOrderBook([]);
-        await fetchExchangeOrders();
-      } else {
-        setTimeout(fetchExchangeOrders, 1000);
-      }
     }
+  });*/
+
+  afterUpdate(async () => {
+    if (
+      $store.tokens &&
+      $store.tokens.length > 0 &&
+      $store.orderBook &&
+      $store.orderBook.length === 0 &&
+      $store.exchangeStorage
+    ) {
+      store.updateOrderBook([]);
+      await fetchExchangeOrders();
+    }
+  });
+
+  onDestroy(() => {
+    store.updateOrderBook([]);
+    ordersFetched = false;
   });
 </script>
 

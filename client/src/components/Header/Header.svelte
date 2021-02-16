@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, afterUpdate } from "svelte";
+  import { onMount, afterUpdate, onDestroy } from "svelte";
   import { TezosToolkit } from "@taquito/taquito";
   import store from "../../store";
   import { TezBridgeWallet } from "@taquito/tezbridge-wallet";
@@ -16,7 +16,7 @@
   const rpcAddress =
     $store.network === "local"
       ? "http://localhost:8732"
-      : "https://testnet-tezos.giganode.io";
+      : "https://edonet-tezos.giganode.io";
 
   let tokens: Token[] = [];
 
@@ -59,29 +59,33 @@
   };
 
   const initBeacon = async () => {
-    const wallet = new BeaconWallet({
-      name: "Tezos Token Factory",
-      preferredNetwork: NetworkType.DELPHINET,
-      disableDefaultEvents: true, // Disable all events / UI. This also disables the pairing alert.
-      eventHandlers: {
-        // To keep the pairing alert, we have to add the following default event handlers back
-        [BeaconEvent.PAIR_INIT]: {
-          handler: defaultEventCallbacks.PAIR_INIT
-        },
-        [BeaconEvent.PAIR_SUCCESS]: {
-          handler: defaultEventCallbacks.PAIR_SUCCESS
+    try {
+      const wallet = new BeaconWallet({
+        name: "Tezos Token Factory",
+        preferredNetwork: NetworkType.EDONET,
+        disableDefaultEvents: true, // Disable all events / UI. This also disables the pairing alert.
+        eventHandlers: {
+          // To keep the pairing alert, we have to add the following default event handlers back
+          [BeaconEvent.PAIR_INIT]: {
+            handler: defaultEventCallbacks.PAIR_INIT
+          },
+          [BeaconEvent.PAIR_SUCCESS]: {
+            handler: defaultEventCallbacks.PAIR_SUCCESS
+          }
         }
-      }
-    });
-    await wallet.requestPermissions({
-      network: { type: NetworkType.DELPHINET }
-    });
-    const userAddress = await wallet.getPKH();
-    store.updateWallet(wallet);
-    store.updateWalletType("beacon");
-    store.updateUserAddress(userAddress);
-    $store.Tezos.setWalletProvider(wallet);
-    await setUserTokens(userAddress);
+      });
+      await wallet.requestPermissions({
+        network: { type: NetworkType.EDONET }
+      });
+      const userAddress = await wallet.getPKH();
+      store.updateWallet(wallet);
+      store.updateWalletType("beacon");
+      store.updateUserAddress(userAddress);
+      $store.Tezos.setWalletProvider(wallet);
+      await setUserTokens(userAddress);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const disconnectWallet = () => {
@@ -129,16 +133,6 @@
     if ($store.userAddress) {
       await setUserTokens($store.userAddress);
     }
-
-    // checks if previous Beacon connection is available
-    if (window.localStorage) {
-      const beaconPreservedState = window.localStorage.getItem(
-        "beacon:sdk-matrix-preserved-state"
-      );
-      if (beaconPreservedState) {
-        console.log(beaconPreservedState);
-      }
-    }
   });
 
   afterUpdate(() => {
@@ -146,6 +140,10 @@
       console.log("deleting user tokens");
       store.updateUserTokens([]);
     }
+  });
+
+  onDestroy(() => {
+    store.updateExchangeStorage(undefined);
   });
 </script>
 
@@ -328,10 +326,10 @@
                 <a href={`#/token/${token.tokenID}`}
                   >{token.symbol}
                   balance:
-                  {(+displayTokenAmount(
+                  {displayTokenAmount(
                     token.tokenID,
                     token.balance
-                  )).toLocaleString("en-US")}</a
+                  ).toLocaleString("en-US")}</a
                 >
               </p>
             {/each}

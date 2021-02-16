@@ -162,7 +162,7 @@
               {displayTokenAmount(
                 payload.token_id_to_buy,
                 payload.token_amount_to_buy
-              )}
+              ).toLocaleString("en-US")}
               {$store.tokens.filter(
                 tk => tk.tokenID === payload.token_id_to_buy
               )[0].symbol}
@@ -170,7 +170,7 @@
               {displayTokenAmount(
                 payload.token_id_to_sell,
                 payload.token_amount_to_sell
-              )}
+              ).toLocaleString("en-US")}
               {$store.tokens.filter(
                 tk => tk.tokenID === payload.token_id_to_sell
               )[0].symbol}?

@@ -74,7 +74,17 @@
                 )[0],
                 balance: order.token_amount_to_sell
               }
-            ];
+            ].map(tk => {
+              // deducts tokens from user's balance
+              if (tk.tokenID === order.token_id_to_buy) {
+                return {
+                  ...tk,
+                  balance: tk.balance - order.token_amount_to_buy
+                };
+              } else {
+                return tk;
+              }
+            });
           } else {
             // if users already had the token
             tokens = $store.userTokens.map(tk => {
@@ -93,6 +103,7 @@
               }
             });
           }
+
           store.updateUserTokens(tokens);
           // removes order from order book
           store.updateOrderBook([
@@ -231,7 +242,7 @@
       owner: order.seller,
       token_id: order.token_id_to_sell
     }) then balance}
-      {#if balance.toNumber() > order.token_amount_to_sell}
+      {#if balance.toNumber() < order.token_amount_to_sell}
         <div class="warning-wrapper">
           <img src="images/alert-triangle.svg" alt="warning" />
           <div class="warning-message">
