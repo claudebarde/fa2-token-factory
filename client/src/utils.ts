@@ -4,8 +4,8 @@ import store from "./store";
 
 export const displayTokenAmount = (
   tokenID: number,
-  amount: number
-): number | string => {
+  amount: bigint
+): bigint | string => {
   const { tokens } = get(store);
 
   if (tokens.length === 0) return "N/A";
@@ -14,5 +14,22 @@ export const displayTokenAmount = (
   if (token.length === 0) return "N/A";
   if (token[0].decimals === undefined) return "N/A";
 
-  return amount / 10 ** token[0].decimals;
+  if (tokenID === 1) {
+    // wTK doesn't have 18 zero padding
+    return BigInt(amount) / BigInt(10 ** token[0].decimals);
+  } else {
+    return BigInt(amount) / BigInt(10 ** token[0].decimals) / BigInt(10 ** 18);
+  }
+};
+
+export const padAmountBeforeTx = (
+  tokenID: number | null,
+  amount: bigint
+): bigint => {
+  if (tokenID === 1) {
+    // wTK doesn't require padding
+    return amount;
+  } else {
+    return amount * BigInt(10 ** 18);
+  }
 };

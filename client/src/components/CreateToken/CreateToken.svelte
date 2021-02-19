@@ -4,6 +4,7 @@
   import { Token } from "../../types";
   import { char2Bytes } from "@taquito/tzip16";
   import ViewTransaction from "../Modal/ViewTransaction.svelte";
+  import { padAmountBeforeTx } from "../../utils";
 
   let name = "";
   let symbol = "";
@@ -40,6 +41,10 @@
       // sends details to smart contract
       try {
         const tokenID = +$store.ledgerStorage.last_token_id + 1;
+        const paddedTotalSupply = padAmountBeforeTx(
+          null,
+          BigInt(+totalSupply) * BigInt(10 ** +decimals)
+        );
 
         const op = await $store.ledgerInstance.methods
           .mint_tokens(
@@ -49,7 +54,7 @@
               { 0: "decimals", 1: char2Bytes(decimals) },
               { 0: "authors", 1: char2Bytes(`[${author}]`) }
             ],
-            +totalSupply * 10 ** +decimals,
+            paddedTotalSupply,
             fixedTotalSupply
           )
           .send();
@@ -66,7 +71,7 @@
           name,
           symbol,
           decimals: +decimals,
-          totalSupply: +totalSupply * 10 ** +decimals,
+          totalSupply: paddedTotalSupply,
           fixedSupply: fixedTotalSupply,
           admin: $store.userAddress,
           authors: `[${author}]`
@@ -75,7 +80,7 @@
         store.updateTokens([...$store.tokens, newToken]);
         store.updateUserTokens([
           ...$store.userTokens,
-          { ...newToken, balance: +totalSupply }
+          { ...newToken, balance: paddedTotalSupply }
         ]);
         // resets the UI
         name = "";

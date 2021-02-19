@@ -23,13 +23,15 @@
   const availableBalance = (tokenID: number, amount: number): boolean => {
     if (!$store.userAddress) return false;
 
-    const token = $store.userTokens.filter(tk => tk.tokenID === tokenID);
-    if (token.length === 0) return false;
+    if ($store.userTokens) {
+      const token = $store.userTokens.filter(tk => tk.tokenID === tokenID);
+      if (token.length === 0) return false;
 
-    if (token[0].balance < amount) {
-      return false;
-    } else {
-      return true;
+      if (token[0].balance < amount) {
+        return false;
+      } else {
+        return true;
+      }
     }
   };
 
@@ -72,14 +74,15 @@
                 ...$store.tokens.filter(
                   tk => tk.tokenID === order.token_id_to_sell
                 )[0],
-                balance: order.token_amount_to_sell
+                balance: BigInt(order.token_amount_to_sell)
               }
             ].map(tk => {
               // deducts tokens from user's balance
               if (tk.tokenID === order.token_id_to_buy) {
                 return {
                   ...tk,
-                  balance: tk.balance - order.token_amount_to_buy
+                  balance:
+                    BigInt(tk.balance) - BigInt(order.token_amount_to_buy)
                 };
               } else {
                 return tk;
@@ -91,12 +94,14 @@
               if (tk.tokenID === order.token_id_to_buy) {
                 return {
                   ...tk,
-                  balance: tk.balance - order.token_amount_to_buy
+                  balance:
+                    BigInt(tk.balance) - BigInt(order.token_amount_to_buy)
                 };
               } else if (tk.tokenID === order.token_id_to_sell) {
                 return {
                   ...tk,
-                  balance: tk.balance + order.token_amount_to_sell
+                  balance:
+                    BigInt(tk.balance) + BigInt(order.token_amount_to_sell)
                 };
               } else {
                 return tk;

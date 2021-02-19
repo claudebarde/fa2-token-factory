@@ -16,36 +16,33 @@
   const rpcAddress =
     $store.network === "local"
       ? "http://localhost:8732"
-      : "https://edonet-tezos.giganode.io";
-
-  let tokens: Token[] = [];
+      : "https://api.tez.ie/rpc/edonet"; //"https://edonet-tezos.giganode.io";
 
   const setUserTokens = async (address: string): Promise<void> => {
     // retrieves user's balances after wallet connection
-    const balancePromises: Promise<BigNumber>[] = [];
+    const balancePromises: Promise<UserToken>[] = [];
 
-    tokens.forEach(token => {
-      balancePromises.push(
-        $store.ledgerStorage.ledger.get({
-          owner: address,
-          token_id: token.tokenID
-        })
+    if ($store.tokens) {
+      let userTokens: UserToken[] = [];
+      $store.tokens.forEach(token =>
+        balancePromises.push(
+          new Promise(async (resolve, reject) => {
+            let balance = await $store.ledgerStorage.ledger.get({
+              owner: address,
+              token_id: token.tokenID
+            });
+            balance = balance ? balance.toNumber() : 0;
+            resolve({
+              ...$store.tokens.filter(tk => tk.tokenID === token.tokenID)[0],
+              balance: balance
+            });
+          })
+        )
       );
-    });
-
-    const balances = await Promise.all(balancePromises);
-    const userTokens: UserToken[] = [];
-    balances.forEach((b, i) => {
-      const balance = b ? b.toNumber() : 0;
-      if (balance > 0) {
-        userTokens.push({
-          ...$store.tokens.filter(tk => tk.tokenID === i + 1)[0],
-          balance: balance
-        });
-      }
-    });
-
-    store.updateUserTokens(userTokens);
+      const tempTokens: UserToken[] = await Promise.all(balancePromises);
+      userTokens = tempTokens.filter(tempTk => tempTk.balance !== BigInt(0));
+      store.updateUserTokens(userTokens);
+    }
   };
 
   const initTezbridgeWallet = async () => {
@@ -62,7 +59,7 @@
     try {
       const wallet = new BeaconWallet({
         name: "Tezos Token Factory",
-        preferredNetwork: NetworkType.EDONET,
+        preferredNetwork: NetworkType.CUSTOM,
         disableDefaultEvents: true, // Disable all events / UI. This also disables the pairing alert.
         eventHandlers: {
           // To keep the pairing alert, we have to add the following default event handlers back
@@ -75,7 +72,7 @@
         }
       });
       await wallet.requestPermissions({
-        network: { type: NetworkType.EDONET }
+        network: { type: NetworkType.CUSTOM, rpcUrl: rpcAddress }
       });
       const userAddress = await wallet.getPKH();
       store.updateWallet(wallet);
@@ -104,7 +101,7 @@
     // creates instances for ledger and exchange
     const ledger = await Tezos.wallet.at($store.ledgerAddress[$store.network]);
     store.updateLedgerInstance(ledger);
-    const ledgerStorage = await ledger.storage();
+    const ledgerStorage: any = await ledger.storage();
     store.updateLedgerStorage(ledgerStorage);
 
     const exchange = await Tezos.wallet.at(
@@ -113,32 +110,44 @@
     store.updateExchangeInstance(exchange);
     const exchangeStorage = await exchange.storage();
     store.updateExchangeStorage(exchangeStorage);
-    // TODO
-    // this will be replaced by a call to an indexer once live on the blockchain
-    tokens = [];
-    if ($store.ledgerStorage) {
-      let tokenId = 1;
-      while (true) {
-        const token = await store.formatToken(tokenId, $store.ledgerStorage);
-
-        if (!token) break;
-
-        tokens = [...tokens, token];
-        tokenId++;
-      }
-      console.log("Tokens:", tokens);
-      store.updateTokens(tokens);
-    }
+    // loads tokens data
+    const bigMapID = ledgerStorage.token_total_supply.toString();
+    const response = await fetch(
+      `https://api.better-call.dev/v1/bigmap/${
+        $store.network === "testnet" ? "edo2net" : $store.network
+      }/${bigMapID}/keys`
+    );
+    const data = await response.json();
+    const tokenPromises = [];
+    data
+      .map(key => +key.data.key.value)
+      .reverse()
+      .forEach(async tokenID => {
+        tokenPromises.push(store.formatToken(tokenID, $store.ledgerStorage));
+      });
+    const tokensResolved = await Promise.all(tokenPromises);
+    console.log(
+      "Tokens:",
+      tokensResolved.filter(el => el)
+    );
+    store.updateTokens(tokensResolved.filter(el => el));
 
     if ($store.userAddress) {
       await setUserTokens($store.userAddress);
     }
   });
 
-  afterUpdate(() => {
-    if (!$store.userAddress && $store.userTokens.length > 0) {
+  afterUpdate(async () => {
+    if (
+      !$store.userAddress &&
+      $store.userTokens &&
+      $store.userTokens.length > 0
+    ) {
       console.log("deleting user tokens");
       store.updateUserTokens([]);
+    }
+    if ($store.userAddress && $store.userTokens === undefined) {
+      await setUserTokens($store.userAddress);
     }
   });
 
@@ -321,25 +330,27 @@
               >
             </p>
             <p on:click={disconnectWallet}>Disconnect wallet</p>
-            {#each $store.userTokens as token}
-              <p style="font-size:0.8rem">
-                <a href={`#/token/${token.tokenID}`}
-                  >{token.symbol}
-                  balance:
-                  {displayTokenAmount(
-                    token.tokenID,
-                    token.balance
-                  ).toLocaleString("en-US")}</a
-                >
-              </p>
-            {/each}
+            {#if $store.userTokens}
+              {#each $store.userTokens as token}
+                <p style="font-size:0.8rem">
+                  <a href={`#/token/${token.tokenID}`}
+                    >{token.symbol}
+                    balance:
+                    {displayTokenAmount(
+                      token.tokenID,
+                      token.balance
+                    ).toLocaleString("en-US")}</a
+                  >
+                </p>
+              {/each}
+            {/if}
           </div>
         {/if}
       </div>
       <div class="contracts-ready">
         <a
           href={`https://better-call.dev/${
-            $store.network === "testnet" ? "delphinet" : "mainnet"
+            $store.network === "testnet" ? "edo2net" : "mainnet"
           }/${$store.ledgerAddress[$store.network]}/operations`}
           target="_blank"
           rel="noreferrer noopener nofollow"
@@ -356,7 +367,7 @@
         </a>
         <a
           href={`https://better-call.dev/${
-            $store.network === "testnet" ? "delphinet" : "mainnet"
+            $store.network === "testnet" ? "edo2net" : "mainnet"
           }/${$store.exchangeAddress[$store.network]}/operations`}
           target="_blank"
           rel="noreferrer noopener nofollow"

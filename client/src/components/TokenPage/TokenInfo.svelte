@@ -55,7 +55,7 @@
 </style>
 
 <div class={`token-id ${index % 2 === 0 ? "light-bg" : ""}`}>
-  {#if $store.userTokens.filter(tk => tk.tokenID === token.tokenID).length === 1}
+  {#if $store.userTokens && $store.userTokens.filter(tk => tk.tokenID === token.tokenID).length === 1}
     <strong>{token.tokenID}</strong>
   {:else}
     {token.tokenID}
@@ -87,7 +87,8 @@
         : ""
     }tzkt.io/${token.admin}`}
     target="_blank"
-    rel="noopener noreferrer nofollow">
+    rel="noopener noreferrer nofollow"
+  >
     {`${token.admin.slice(0, 10)}...${token.admin.slice(-10)}`}
   </a>
 </div>

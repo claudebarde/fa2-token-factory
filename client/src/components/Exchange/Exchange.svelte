@@ -4,7 +4,7 @@
   import { OrderEntry, UserToken, ExchangeError } from "../../types";
   import Modal from "../Modal/Modal.svelte";
   import Order from "./Order.svelte";
-  import { displayTokenAmount } from "../../utils";
+  import { displayTokenAmount, padAmountBeforeTx } from "../../utils";
   import ViewTransaction from "../Modal/ViewTransaction.svelte";
 
   let tokenToBuy: number = 0;
@@ -27,7 +27,9 @@
   let ordersFetched = false;
 
   const displayMaxAmount = (tokenID: number): string => {
-    const token = $store.userTokens.filter(tk => tk.tokenID === tokenID)[0];
+    const token = ($store.userTokens ? $store.userTokens : []).filter(
+      tk => tk.tokenID === tokenID
+    )[0];
     if (token) {
       const balance = displayTokenAmount(token.tokenID, token.balance);
 
@@ -76,7 +78,7 @@
             if (tk.tokenID === 1) {
               return {
                 ...tk,
-                totalSupply: tk.totalSupply + +buyWTK * 10 ** 6
+                totalSupply: tk.totalSupply + BigInt(+buyWTK) * BigInt(10 ** 6)
               };
             } else {
               return tk;
@@ -92,7 +94,7 @@
             ...$store.userTokens,
             {
               ...$store.tokens.filter(tk => tk.tokenID === 1)[0],
-              balance: +buyWTK * 10 ** 6
+              balance: BigInt(+buyWTK) * BigInt(10 ** 6)
             }
           ];
         } else {
@@ -101,7 +103,7 @@
             if (tk.tokenID === 1) {
               return {
                 ...tk,
-                balance: tk.balance + +buyWTK * 10 ** 6
+                balance: tk.balance + BigInt(+buyWTK) * BigInt(10 ** 6)
               };
             } else {
               return tk;
@@ -145,7 +147,8 @@
           if (tk.tokenID === 1) {
             return {
               ...tk,
-              balance: tk.balance - +redeemWTK * 10 ** +tk.decimals
+              balance:
+                tk.balance - BigInt(+redeemWTK) * BigInt(10 ** +tk.decimals)
             };
           } else {
             return tk;
@@ -209,15 +212,24 @@
       )[0].decimals;
 
       try {
+        const paddedTokenToSellAmount: bigint = padAmountBeforeTx(
+          tokenToSell,
+          BigInt(+tokenToSellAmount * 10 ** tokenToSellDecimals)
+        );
+        const paddedTokenToBuyAmount: bigint = padAmountBeforeTx(
+          tokenToBuy,
+          BigInt(+tokenToBuyAmount * 10 ** tokenToBuyDecimals)
+        );
+
         const op = await $store.ledgerInstance.methods
           .new_exchange_order(
             "buy",
             [["unit"]],
             tokenToSell.toString(),
-            +tokenToSellAmount * 10 ** tokenToSellDecimals,
+            paddedTokenToSellAmount,
             tokenToBuy.toString(),
-            +tokenToBuyAmount * 10 ** tokenToBuyDecimals,
-            +tokenToSellAmount * 10 ** tokenToSellDecimals,
+            paddedTokenToBuyAmount,
+            paddedTokenToSellAmount,
             $store.userAddress
           )
           .send();
@@ -236,10 +248,10 @@
           created_on: new Date(Date.now()).toISOString(),
           order_type: "buy",
           token_id_to_sell: tokenToSell,
-          token_amount_to_sell: +tokenToSellAmount * 10 ** tokenToSellDecimals,
+          token_amount_to_sell: paddedTokenToSellAmount,
           token_id_to_buy: tokenToBuy,
-          token_amount_to_buy: +tokenToBuyAmount * 10 ** tokenToBuyDecimals,
-          total_token_amount: +tokenToSellAmount * 10 ** tokenToSellDecimals,
+          token_amount_to_buy: paddedTokenToBuyAmount,
+          total_token_amount: paddedTokenToSellAmount,
           seller: $store.userAddress
         };
         store.updateOrderBook([order, ...$store.orderBook]);
@@ -487,18 +499,22 @@
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
-            {#each $store.userTokens as token}
-              <div
-                on:click={() => {
-                  tokenToSell = token.tokenID;
-                  exchangeError = undefined;
-                }}
-              >
-                {token.symbol}
-              </div>
+            {#if $store.userTokens}
+              {#each $store.userTokens as token}
+                <div
+                  on:click={() => {
+                    tokenToSell = token.tokenID;
+                    exchangeError = undefined;
+                  }}
+                >
+                  {token.symbol}
+                </div>
+              {:else}
+                <div>No token</div>
+              {/each}
             {:else}
               <div>No token</div>
-            {/each}
+            {/if}
           </div>
         </div>
         <div>
@@ -526,18 +542,22 @@
             <span class="dropdown-title__arrow">&#9660;</span>
           </div>
           <div class="dropdown-menu">
-            {#each $store.tokens as token}
-              <div
-                on:click={() => {
-                  tokenToBuy = token.tokenID;
-                  exchangeError = undefined;
-                }}
-              >
-                {token.symbol}
-              </div>
+            {#if $store.tokens}
+              {#each $store.tokens as token}
+                <div
+                  on:click={() => {
+                    tokenToBuy = token.tokenID;
+                    exchangeError = undefined;
+                  }}
+                >
+                  {token.symbol}
+                </div>
+              {:else}
+                <div>No token</div>
+              {/each}
             {:else}
               <div>No token</div>
-            {/each}
+            {/if}
           </div>
         </div>
         <div>

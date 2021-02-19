@@ -17,10 +17,12 @@ interface State {
   ledgerStorage: any;
   exchangeInstance: ContractAbstraction<Wallet> | undefined;
   exchangeStorage: any;
-  tokens: Token[];
-  userTokens: UserToken[];
+  tokens: Token[] | undefined;
+  userTokens: UserToken[] | undefined;
   orderBook: OrderEntry[];
 }
+
+//delphinet ledger: "KT1QrBZwRKSRCdnSAngLnTjfB75zuynib9cV"
 
 const initialState: State = {
   Tezos: undefined,
@@ -30,20 +32,20 @@ const initialState: State = {
   network: "testnet", //process.env.NODE_ENV === "development" ? "local" : "testnet",
   ledgerAddress: {
     mainnet: "",
-    testnet: "KT1HB8XJVrWwdPzDZKVMVnE5rRxcekwqEopj", //"KT1QrBZwRKSRCdnSAngLnTjfB75zuynib9cV",
+    testnet: "KT1EDfz96aRkbhS6TPJ7P1HbbQF8963mVZQK", //"KT1HB8XJVrWwdPzDZKVMVnE5rRxcekwqEopj",
     local: "KT1HCTmt3U4aXcTSw5zx8kEejWRpQssT674Y"
   },
   exchangeAddress: {
     mainnet: "",
-    testnet: "KT1CJd7UBU9gF9mUVvCs3Yg5TMu7MErbzffA", //"KT1HiAfj5VGvAYBtkk2eXm581JaZvWYRfh7h",
+    testnet: "KT1PMGdzKm5t2zd2wibM4HNDcd2sdS8Y8uDw", //"KT1CJd7UBU9gF9mUVvCs3Yg5TMu7MErbzffA", //"KT1HiAfj5VGvAYBtkk2eXm581JaZvWYRfh7h",
     local: "KT1Lb9Afrp6H9bpdRAhBRGH8CTgonwbWUwSq"
   },
   ledgerInstance: undefined,
   ledgerStorage: undefined,
   exchangeInstance: undefined,
   exchangeStorage: undefined,
-  tokens: [],
-  userTokens: [],
+  tokens: undefined,
+  userTokens: undefined,
   orderBook: []
 };
 

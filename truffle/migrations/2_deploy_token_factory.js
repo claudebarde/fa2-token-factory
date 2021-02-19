@@ -45,7 +45,7 @@ const initialStorage = {
         name: "FA2 Token Factory",
         description:
           "A fungible token factory to create, mint, transfer and exchange tokens",
-        authors: ["https://www.github.com/claudebarde"]
+        authors: ["@claudebarde"]
       })
     )
   }),

@@ -43,7 +43,9 @@
           if (tk.tokenID === tokenID) {
             return {
               ...tk,
-              balance: tk.balance - +amount * 10 ** +paramToken.decimals
+              balance:
+                BigInt(tk.balance) -
+                BigInt(+amount) * BigInt(10 ** +paramToken.decimals)
             };
           } else {
             return tk;
@@ -59,7 +61,7 @@
   };
 
   afterUpdate(() => {
-    if (params.id) {
+    if (params.id && $store.tokens) {
       if (isNaN(params.id)) {
         // token symbol provided
         const token = $store.tokens.filter(token => token.symbol === params.id);
@@ -199,7 +201,8 @@
                   : ""
               }tzkt.io/${paramToken.admin}`}
               target="_blank"
-              rel="noopener noreferrer">
+              rel="noopener noreferrer"
+            >
               {`${paramToken.admin.slice(0, 10)}...${paramToken.admin.slice(
                 -10
               )}`}
@@ -221,12 +224,12 @@
                   wꜩ
                   {displayTokenAmount(
                     paramToken.tokenID,
-                    balance ? balance : 0
+                    balance ? balance.toNumber() : 0
                   ).toLocaleString("en-US")}
                 {:else}
                   {displayTokenAmount(
                     paramToken.tokenID,
-                    balance ? balance : 0
+                    balance ? balance.toNumber() : 0
                   ).toLocaleString("en-US")}
                 {/if}
               </div>
@@ -238,7 +241,8 @@
                   <button
                     class={`button ${sendingTransfer ? "disabled" : "blue"}`}
                     disabled={sendingTransfer}
-                    on:click={() => (openTransferModal = true)}>
+                    on:click={() => (openTransferModal = true)}
+                  >
                     {#if sendingTransfer}
                       <span>Transferring...</span><span class="spinner" />
                     {:else}
@@ -269,16 +273,25 @@
       class="tokens-grid"
       style={paramToken ? "max-height:350px" : "max-height: 700px"}
     >
-      {#each $store.tokens.reverse() as token, i}
-        <TokenInfo {token} index={i} />
+      {#if $store.tokens === undefined}
+        <div />
+        <div />
+        <div />
+        <div>Loading the tokens...</div>
+        <div />
+        <div />
       {:else}
-        <div />
-        <div />
-        <div />
-        <div>No token yet!</div>
-        <div />
-        <div />
-      {/each}
+        {#each $store.tokens.reverse() as token, i}
+          <TokenInfo {token} index={i} />
+        {:else}
+          <div />
+          <div />
+          <div />
+          <div>No token yet!</div>
+          <div />
+          <div />
+        {/each}
+      {/if}
     </div>
   </section>
 </main>

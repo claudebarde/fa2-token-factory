@@ -3,14 +3,14 @@ export interface Token {
   name: string;
   symbol: string;
   decimals: number;
-  totalSupply: number;
+  totalSupply: bigint;
   fixedSupply: boolean;
   admin?: string;
   authors?: string;
 }
 
 export interface UserToken extends Token {
-  balance: number;
+  balance: bigint;
 }
 
 export interface OrderEntry {
@@ -18,10 +18,10 @@ export interface OrderEntry {
   created_on: string;
   order_type: "buy" | "sell";
   token_id_to_sell: number;
-  token_amount_to_sell: number;
+  token_amount_to_sell: number | bigint;
   token_id_to_buy: number;
-  token_amount_to_buy: number;
-  total_token_amount: number;
+  token_amount_to_buy: number | bigint;
+  total_token_amount: number | bigint;
   seller: string;
 }
 

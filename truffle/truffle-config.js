@@ -26,6 +26,13 @@ module.exports = {
       type: "tezos",
       secretKey: faucet.sk
     },
+    edonet: {
+      host: "https://api.tez.ie/rpc/edonet",
+      port: 443,
+      network_id: "*",
+      type: "tezos",
+      secretKey: faucet.sk
+    },
     mainnet: {
       host: "https://mainnet.smartpy.io",
       port: 443,
