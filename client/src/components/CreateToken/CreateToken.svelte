@@ -45,6 +45,19 @@
           null,
           BigInt(+totalSupply) * BigInt(10 ** +decimals)
         );
+        // creates array for additional metadata
+        let additionalMetadata = [];
+        if (iconURL.trim() && isNaN(+iconURL))
+          additionalMetadata.push({ 0: "icon_url", 1: char2Bytes(iconURL) });
+        if (website.trim() && isNaN(+website))
+          additionalMetadata.push({ 0: "website", 1: char2Bytes(website) });
+        if (emailAddress.trim() && isNaN(+emailAddress))
+          additionalMetadata.push({
+            0: "email_address",
+            1: char2Bytes(emailAddress)
+          });
+        if (username.trim() && isNaN(+username))
+          additionalMetadata.push({ 0: "username", 1: char2Bytes(username) });
 
         const op = await $store.ledgerInstance.methods
           .mint_tokens(
@@ -52,7 +65,8 @@
               { 0: "name", 1: char2Bytes(name) },
               { 0: "symbol", 1: char2Bytes(symbol) },
               { 0: "decimals", 1: char2Bytes(decimals) },
-              { 0: "authors", 1: char2Bytes(`[${author}]`) }
+              { 0: "authors", 1: char2Bytes(`[${author}]`) },
+              ...additionalMetadata
             ],
             paddedTotalSupply,
             fixedTotalSupply

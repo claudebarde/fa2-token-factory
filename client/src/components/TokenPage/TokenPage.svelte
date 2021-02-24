@@ -109,7 +109,7 @@
 
       .tokens-grid {
         display: grid;
-        grid-template-columns: 10% 20% 10% 20% 30% 10%;
+        grid-template-columns: 20% 20% 20% 30% 10%;
         grid-template-rows: auto;
         align-items: center;
         width: 90%;
@@ -173,7 +173,9 @@
             <div>
               <img
                 class="param-token__title__icon"
-                src="images/tezos-coin.png"
+                src={paramToken.icon_url
+                  ? paramToken.icon_url
+                  : "images/tezos-coin.png"}
                 alt="token icon"
               />
             </div>
@@ -262,7 +264,6 @@
       </div>
     {/if}
     <div class="tokens-grid">
-      <div class="token-id"><strong>ID</strong></div>
       <div class="token-name"><strong>Name</strong></div>
       <div class="token-symbol"><strong>Symbol</strong></div>
       <div class="token-totalsupply"><strong>Total Supply</strong></div>
@@ -276,15 +277,13 @@
       {#if $store.tokens === undefined}
         <div />
         <div />
-        <div />
         <div>Loading the tokens...</div>
         <div />
         <div />
       {:else}
-        {#each $store.tokens.reverse() as token, i}
+        {#each $store.tokens as token, i}
           <TokenInfo {token} index={i} />
         {:else}
-          <div />
           <div />
           <div />
           <div>No token yet!</div>

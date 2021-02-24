@@ -121,16 +121,12 @@
     const tokenPromises = [];
     data
       .map(key => +key.data.key.value)
-      .reverse()
       .forEach(async tokenID => {
         tokenPromises.push(store.formatToken(tokenID, $store.ledgerStorage));
       });
-    const tokensResolved = await Promise.all(tokenPromises);
-    console.log(
-      "Tokens:",
-      tokensResolved.filter(el => el)
-    );
-    store.updateTokens(tokensResolved.filter(el => el));
+    const tokensResolved = (await Promise.all(tokenPromises)).filter(el => el);
+    console.log("Tokens:", tokensResolved);
+    store.updateTokens(tokensResolved);
 
     if ($store.userAddress) {
       await setUserTokens($store.userAddress);

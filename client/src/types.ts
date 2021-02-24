@@ -7,6 +7,10 @@ export interface Token {
   fixedSupply: boolean;
   admin?: string;
   authors?: string;
+  icon_url?: string;
+  website?: string;
+  email_address?: string;
+  username?: string;
 }
 
 export interface UserToken extends Token {

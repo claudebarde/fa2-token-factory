@@ -54,18 +54,22 @@
   }
 </style>
 
-<div class={`token-id ${index % 2 === 0 ? "light-bg" : ""}`}>
+<!-- <div class={`token-id ${index % 2 === 0 ? "light-bg" : ""}`}>
   {#if $store.userTokens && $store.userTokens.filter(tk => tk.tokenID === token.tokenID).length === 1}
     <strong>{token.tokenID}</strong>
   {:else}
     {token.tokenID}
   {/if}
-</div>
+</div>-->
 <div class={`token-name ${index % 2 === 0 ? "light-bg" : ""}`}>
   <a href={`#/token/${token.tokenID}`}>{token.name}</a>
 </div>
 <div class={`token-symbol ${index % 2 === 0 ? "light-bg" : ""}`}>
-  {token.symbol}
+  {#if $store.userTokens && $store.userTokens.filter(tk => tk.tokenID === token.tokenID).length === 1}
+    <em>{token.symbol}</em>
+  {:else}
+    {token.symbol}
+  {/if}
 </div>
 <div class={`token-total-supply ${index % 2 === 0 ? "light-bg" : ""}`}>
   {#if token.symbol === "wTK"}

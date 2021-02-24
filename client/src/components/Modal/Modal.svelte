@@ -217,7 +217,20 @@
           <h3>Token metadata for {payload.name}</h3>
           {#each Object.keys(payload) as prop}
             {#if !["tokenID", "name", "symbol", "totalSupply", "admin"].includes(prop)}
-              <p>{prop}: {payload[prop]}</p>
+              <p>
+                {prop}:
+                {#if prop === "website" || prop === "icon_url"}
+                  <a
+                    href={payload[prop]}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow">{payload[prop]}</a
+                  >
+                {:else if prop === "fixedSupply"}
+                  {payload[prop] ? "yes" : "no"}
+                {:else}
+                  {payload[prop]}
+                {/if}
+              </p>
             {/if}
           {/each}
         {:else}This is an empty modal{/if}
