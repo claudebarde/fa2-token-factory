@@ -18,10 +18,10 @@ export interface OrderEntry {
   created_on: string;
   order_type: "buy" | "sell";
   token_id_to_sell: number;
-  token_amount_to_sell: number | bigint;
+  token_amount_to_sell: bigint;
   token_id_to_buy: number;
-  token_amount_to_buy: number | bigint;
-  total_token_amount: number | bigint;
+  token_amount_to_buy: bigint;
+  total_token_amount: bigint;
   seller: string;
 }
 

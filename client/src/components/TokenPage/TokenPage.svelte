@@ -224,12 +224,12 @@
                   wꜩ
                   {displayTokenAmount(
                     paramToken.tokenID,
-                    balance ? balance.toNumber() : 0
+                    balance ? balance.toFixed() : 0
                   ).toLocaleString("en-US")}
                 {:else}
                   {displayTokenAmount(
                     paramToken.tokenID,
-                    balance ? balance.toNumber() : 0
+                    balance ? balance.toFixed() : 0
                   ).toLocaleString("en-US")}
                 {/if}
               </div>

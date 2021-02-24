@@ -114,7 +114,7 @@ const state = {
     return {
       tokenID: tokenId,
       admin: admin[0],
-      totalSupply: totalSupply.toNumber(),
+      totalSupply: BigInt(totalSupply.toFixed()),
       fixedSupply: admin[1],
       ...metadata
     };

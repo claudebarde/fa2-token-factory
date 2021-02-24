@@ -143,7 +143,7 @@
 
         await op.confirmation();
         // updates user's local balance
-        const tokens = $store.userTokens.map(tk => {
+        const userTokens = $store.userTokens.map(tk => {
           if (tk.tokenID === 1) {
             return {
               ...tk,
@@ -154,7 +154,21 @@
             return tk;
           }
         });
-        store.updateUserTokens(tokens);
+        store.updateUserTokens(userTokens);
+        // updates total supply
+        const tokens = $store.tokens.map(tk => {
+          if (tk.tokenID === 1) {
+            return {
+              ...tk,
+              totalSupply:
+                tk.totalSupply - BigInt(+redeemWTK) * BigInt(10 ** +tk.decimals)
+            };
+          }
+
+          return tk;
+        });
+        store.updateTokens(tokens);
+
         redeemWTK = "";
       } catch (error) {
         console.log(error);
@@ -293,11 +307,11 @@
             const order: OrderEntry = {
               ...ord,
               order_id: +filteredData[i].data.key_string,
-              token_amount_to_buy: ord.token_amount_to_buy.toNumber(),
-              token_amount_to_sell: ord.token_amount_to_sell.toNumber(),
+              token_amount_to_buy: BigInt(ord.token_amount_to_buy.toFixed()),
+              token_amount_to_sell: BigInt(ord.token_amount_to_sell.toFixed()),
               token_id_to_buy: ord.token_id_to_buy.toNumber(),
               token_id_to_sell: ord.token_id_to_sell.toNumber(),
-              total_token_amount: ord.total_token_amount.toNumber()
+              total_token_amount: BigInt(ord.total_token_amount.toFixed())
             };
             ordersToLoad.push(order);
           });
@@ -306,37 +320,6 @@
     }
     ordersFetched = true;
   };
-
-  /*onMount(async () => {
-    if ($store.network === "local") {
-      const orderPromises: Promise<any>[] = [];
-      for (
-        let i = 1;
-        i <= $store.exchangeStorage.last_order_id.toNumber();
-        i++
-      ) {
-        orderPromises.push($store.exchangeStorage.order_book.get(i.toString()));
-      }
-      const orders = await Promise.all(orderPromises);
-      console.log(orders.filter(o => o));
-      if (orders.length > 0) {
-        orders
-          .filter(o => o)
-          .forEach((ord, i) => {
-            const order: OrderEntry = {
-              ...ord,
-              order_id: i + 1,
-              token_amount_to_buy: ord.token_amount_to_buy.toNumber(),
-              token_amount_to_sell: ord.token_amount_to_sell.toNumber(),
-              token_id_to_buy: ord.token_id_to_buy.toNumber(),
-              token_id_to_sell: ord.token_id_to_sell.toNumber(),
-              total_token_amount: ord.total_token_amount.toNumber()
-            };
-            store.updateOrderBook([order, ...$store.orderBook]);
-          });
-      }
-    }
-  });*/
 
   afterUpdate(async () => {
     if (

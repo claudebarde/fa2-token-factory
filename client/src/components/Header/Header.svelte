@@ -31,10 +31,10 @@
               owner: address,
               token_id: token.tokenID
             });
-            balance = balance ? balance.toNumber() : 0;
+            balance = balance ? balance.toFixed() : 0;
             resolve({
               ...$store.tokens.filter(tk => tk.tokenID === token.tokenID)[0],
-              balance: balance
+              balance: BigInt(balance)
             });
           })
         )
@@ -134,6 +134,11 @@
 
     if ($store.userAddress) {
       await setUserTokens($store.userAddress);
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      // connect the wallet automatically during development
+      // initBeacon();
     }
   });
 
