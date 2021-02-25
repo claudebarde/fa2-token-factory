@@ -30,11 +30,13 @@
       totalSupply &&
       !isNaN(+totalSupply) &&
       !!decimals &&
-      !isNaN(+decimals)
+      !isNaN(+decimals) &&
+      +decimals <= 6
     );
   };
 
   const createNewToken = async () => {
+    console.log((BigInt(10 ** +decimals) * BigInt(10 ** 18)).toString());
     if (isFormComplete(name, symbol, author, totalSupply, decimals)) {
       inputError = false;
       loading = true;
@@ -64,7 +66,10 @@
             [
               { 0: "name", 1: char2Bytes(name) },
               { 0: "symbol", 1: char2Bytes(symbol) },
-              { 0: "decimals", 1: char2Bytes(decimals) },
+              {
+                0: "decimals",
+                1: char2Bytes((+decimals + 18).toString())
+              },
               { 0: "authors", 1: char2Bytes(`[${author}]`) },
               ...additionalMetadata
             ],
@@ -163,6 +168,11 @@
       <div class="card-header">Insert here the details of the new token</div>
       <div class="card-body">
         <div class="card-body-element">
+          <span style="font-size:0.8rem;font-style:italic"
+            >Decimals and total supply must be round numbers</span
+          >
+        </div>
+        <div class="card-body-element">
           <label for="token-name"
             >Name:
             <input type="text" id="token-name" bind:value={name} /></label
@@ -174,13 +184,14 @@
               id="token-symbol"
               bind:value={symbol}
               maxlength="5"
+              placeholder="Maximum 5 characters"
             /></label
           >
         </div>
         <div class="card-body-element">
           <label for="token-decimals"
             >Decimals:
-            <input type="text" bind:value={decimals} />
+            <input type="text" bind:value={decimals} placeholder="Maximum 6" />
           </label>
           <label for="token-total-supply"
             >Total supply:
