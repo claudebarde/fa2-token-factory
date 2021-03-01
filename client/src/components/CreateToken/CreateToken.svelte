@@ -36,7 +36,7 @@
   };
 
   const createNewToken = async () => {
-    console.log((BigInt(10 ** +decimals) * BigInt(10 ** 18)).toString());
+    //console.log((BigInt(10 ** +decimals) * BigInt(10 ** 18)).toString());
     if (isFormComplete(name, symbol, author, totalSupply, decimals)) {
       inputError = false;
       loading = true;
@@ -45,7 +45,7 @@
         const tokenID = +$store.ledgerStorage.last_token_id + 1;
         const paddedTotalSupply = padAmountBeforeTx(
           null,
-          BigInt(+totalSupply) * BigInt(10 ** +decimals)
+          BigInt(+totalSupply) * BigInt(10 ** (+decimals + 18))
         );
         // creates array for additional metadata
         let additionalMetadata = [];
@@ -89,7 +89,7 @@
           tokenID,
           name,
           symbol,
-          decimals: +decimals,
+          decimals: +decimals + 18,
           totalSupply: paddedTotalSupply,
           fixedSupply: fixedTotalSupply,
           admin: $store.userAddress,
@@ -134,6 +134,13 @@
 
     .head {
       padding: 20px 50px;
+      display: flex;
+      justify-content: space-between;
+
+      img {
+        width: 100px;
+        height: 70px;
+      }
     }
 
     .body {
@@ -162,6 +169,7 @@
 <main>
   <section class="head">
     <h1>Create a new token</h1>
+    <img src="images/beta-testing.png" alt="beta-testing" />
   </section>
   <section class="body">
     <div class="card">

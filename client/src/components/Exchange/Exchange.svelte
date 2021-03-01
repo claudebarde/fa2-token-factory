@@ -228,11 +228,11 @@
       try {
         const paddedTokenToSellAmount: bigint = padAmountBeforeTx(
           tokenToSell,
-          BigInt(+tokenToSellAmount * 10 ** tokenToSellDecimals)
+          BigInt(+tokenToSellAmount) * BigInt(10 ** tokenToSellDecimals)
         );
         const paddedTokenToBuyAmount: bigint = padAmountBeforeTx(
           tokenToBuy,
-          BigInt(+tokenToBuyAmount * 10 ** tokenToBuyDecimals)
+          BigInt(+tokenToBuyAmount) * BigInt(10 ** tokenToBuyDecimals)
         );
 
         const op = await $store.ledgerInstance.methods
@@ -348,6 +348,13 @@
 
     .head {
       padding: 20px 50px;
+      display: flex;
+      justify-content: space-between;
+
+      img {
+        width: 100px;
+        height: 70px;
+      }
     }
 
     .body {
@@ -420,6 +427,7 @@
 <main>
   <section class="head">
     <h1>Exchange tokens</h1>
+    <img src="images/beta-testing.png" alt="beta-testing" />
   </section>
   <section class="body">
     <div class="wtk-actions">

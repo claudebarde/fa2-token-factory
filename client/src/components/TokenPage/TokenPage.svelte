@@ -95,6 +95,13 @@
 
     .head {
       padding: 20px 50px;
+      display: flex;
+      justify-content: space-between;
+
+      img {
+        width: 100px;
+        height: 70px;
+      }
     }
 
     .body {
@@ -164,6 +171,7 @@
 <main>
   <section class="head">
     <h1>Find a token</h1>
+    <img src="images/beta-testing.png" alt="beta-testing" />
   </section>
   <section class="body">
     {#if paramToken}
