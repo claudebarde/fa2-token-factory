@@ -87,7 +87,7 @@
   <a
     href={`https://${
       $store.network === "local" || $store.network === "testnet"
-        ? "carthage."
+        ? "edo2net."
         : ""
     }tzkt.io/${token.admin}`}
     target="_blank"
