@@ -172,7 +172,7 @@
     <img src="images/beta-testing.png" alt="beta-testing" />
   </section>
   <section class="body">
-    <div class="card">
+    <div class="card" style="height: 60vh">
       <div class="card-header">Insert here the details of the new token</div>
       <div class="card-body">
         <div class="card-body-element">
@@ -249,33 +249,33 @@
             <p>&nbsp;</p>
           {/if}
         </div>
-        <div class="card-buttons">
-          {#if $store.userAddress}
-            {#if loading}
-              <button class="button" disabled>
-                <span>Confirming...</span><span class="spinner" />
-              </button>
-            {:else}
-              <button
-                class={`button ${
-                  isFormComplete(name, symbol, author, totalSupply, decimals)
-                    ? "green"
-                    : "disabled"
-                }`}
-                disabled={!isFormComplete(
-                  name,
-                  symbol,
-                  author,
-                  totalSupply,
-                  decimals
-                )}
-                on:click={createNewToken}>Confirm</button
-              >
-            {/if}
+      </div>
+      <div class="card-buttons">
+        {#if $store.userAddress}
+          {#if loading}
+            <button class="button" disabled>
+              <span>Confirming...</span><span class="spinner" />
+            </button>
           {:else}
-            <button class="button" disabled>Please connect your wallet</button>
+            <button
+              class={`button ${
+                isFormComplete(name, symbol, author, totalSupply, decimals)
+                  ? "green"
+                  : "disabled"
+              }`}
+              disabled={!isFormComplete(
+                name,
+                symbol,
+                author,
+                totalSupply,
+                decimals
+              )}
+              on:click={createNewToken}>Confirm</button
+            >
           {/if}
-        </div>
+        {:else}
+          <button class="button" disabled>Please connect your wallet</button>
+        {/if}
       </div>
     </div>
   </section>

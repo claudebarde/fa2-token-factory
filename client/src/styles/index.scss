@@ -39,10 +39,17 @@ a {
   }
 
   .card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     padding: 20px;
     background-color: white;
     border: solid 1px #a0aec0;
-    border-radius: 10px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom: none;
+    height: 100%;
+    overflow: auto;
 
     .card-body-element {
       display: flex;
@@ -75,12 +82,6 @@ a {
       }
     }
 
-    .card-buttons {
-      padding-top: 20px;
-      display: flex;
-      justify-content: flex-end;
-    }
-
     .disclaimer {
       font-size: 0.9rem;
     }
@@ -94,6 +95,17 @@ a {
         text-align: right;
       }
     }
+  }
+
+  .card-buttons {
+    padding: 20px;
+    display: flex;
+    justify-content: flex-end;
+    border: solid 1px #a0aec0;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-top: none;
+    background-color: white;
   }
 }
 
