@@ -58,7 +58,8 @@
 <main>
   <section
     class="banner"
-    style="background-image: url('images/background.png')">
+    style="background-image: url('images/background.jpg')"
+  >
     <div class="title">Tezos Token Factory</div>
     <div class="subtitle">
       Easily create, browse and exchange FA2 tokens on the Tezos blockchain
@@ -109,6 +110,7 @@
     <a
       href="https://stories.freepik.com/web"
       target="_blank"
-      rel="noreferrer noopener">Illustrations by Freepik Stories</a>
+      rel="noreferrer noopener">Illustrations by Freepik Stories</a
+    >
   </section>
 </main>
