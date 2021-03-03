@@ -56,10 +56,10 @@
             .send();
 
           passOpHash(op.opHash);
-          setTimeout(() => showViewTx(true), 2000);
-          setTimeout(() => showViewTx(false), 6000);
 
           await op.confirmation();
+          setTimeout(() => showViewTx(true), 2000);
+          setTimeout(() => showViewTx(false), 6000);
           // updates user's balances
           let tokens: UserToken[];
           if (

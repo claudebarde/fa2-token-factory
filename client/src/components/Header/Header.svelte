@@ -41,6 +41,7 @@
       );
       const tempTokens: UserToken[] = await Promise.all(balancePromises);
       userTokens = tempTokens.filter(tempTk => tempTk.balance !== BigInt(0));
+      console.log("user tokens:", userTokens);
       store.updateUserTokens(userTokens);
     }
   };

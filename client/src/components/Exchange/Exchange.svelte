@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount, afterUpdate, onDestroy } from "svelte";
+  import { afterUpdate, onDestroy } from "svelte";
   import store from "../../store";
   import { OrderEntry, UserToken, ExchangeError } from "../../types";
   import Modal from "../Modal/Modal.svelte";
   import Order from "./Order.svelte";
-  import { displayTokenAmount, padAmountBeforeTx } from "../../utils";
+  import { displayTokenAmount } from "../../utils";
   import ViewTransaction from "../Modal/ViewTransaction.svelte";
 
   let tokenToBuy: number = 0;
@@ -226,14 +226,10 @@
       )[0].decimals;
 
       try {
-        const paddedTokenToSellAmount: bigint = padAmountBeforeTx(
-          tokenToSell,
-          BigInt(+tokenToSellAmount) * BigInt(10 ** tokenToSellDecimals)
-        );
-        const paddedTokenToBuyAmount: bigint = padAmountBeforeTx(
-          tokenToBuy,
-          BigInt(+tokenToBuyAmount) * BigInt(10 ** tokenToBuyDecimals)
-        );
+        const paddedTokenToSellAmount: bigint =
+          BigInt(+tokenToSellAmount) * BigInt(10 ** tokenToSellDecimals);
+        const paddedTokenToBuyAmount: bigint =
+          BigInt(+tokenToBuyAmount) * BigInt(10 ** tokenToBuyDecimals);
 
         const op = await $store.ledgerInstance.methods
           .new_exchange_order(
@@ -249,11 +245,11 @@
           .send();
 
         console.log(op.opHash);
+
+        await op.confirmation();
         opHash = op.opHash;
         setTimeout(() => (viewTxToast = true), 2000);
         setTimeout(() => (viewTxToast = false), 6000);
-
-        await op.confirmation();
         // updates the local exchange storage
         const newStorage: any = await $store.exchangeInstance.storage();
         // adds new order to local order book

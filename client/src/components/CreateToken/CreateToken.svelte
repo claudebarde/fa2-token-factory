@@ -4,7 +4,6 @@
   import { Token } from "../../types";
   import { char2Bytes } from "@taquito/tzip16";
   import ViewTransaction from "../Modal/ViewTransaction.svelte";
-  import { padAmountBeforeTx } from "../../utils";
 
   let name = "";
   let symbol = "";
@@ -43,10 +42,8 @@
       // sends details to smart contract
       try {
         const tokenID = +$store.ledgerStorage.last_token_id + 1;
-        const paddedTotalSupply = padAmountBeforeTx(
-          null,
-          BigInt(+totalSupply) * BigInt(10 ** (+decimals + 18))
-        );
+        const paddedTotalSupply =
+          BigInt(+totalSupply) * BigInt(10 ** (+decimals + 18));
         // creates array for additional metadata
         let additionalMetadata = [];
         if (iconURL.trim() && isNaN(+iconURL))
@@ -79,11 +76,11 @@
           .send();
 
         console.log(tokenID, op.opHash);
-        opHash = op.opHash;
-        setTimeout(() => (viewTxToast = true), 2000);
-        setTimeout(() => (viewTxToast = false), 6000);
 
         await op.confirmation();
+        opHash = op.opHash;
+        viewTxToast = true;
+        setTimeout(() => (viewTxToast = false), 2000);
         // updates the token list
         let newToken: Token = {
           tokenID,
@@ -112,7 +109,7 @@
         emailAddress = "";
         username = "";
         // navigates to token page
-        push(`/token/${tokenID}`);
+        setTimeout(() => push(`/token/${tokenID}`), 4400);
       } catch (error) {
         console.error(error);
       } finally {

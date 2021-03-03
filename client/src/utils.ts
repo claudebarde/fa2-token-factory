@@ -18,18 +18,6 @@ export const displayTokenAmount = (
     // wTK doesn't have 18 zero padding
     return BigInt(amount) / BigInt(10 ** token[0].decimals);
   } else {
-    return BigInt(amount) / BigInt(10 ** token[0].decimals) / BigInt(10 ** 18);
-  }
-};
-
-export const padAmountBeforeTx = (
-  tokenID: number | null,
-  amount: bigint
-): bigint => {
-  if (tokenID === 1) {
-    // wTK doesn't require padding
-    return amount;
-  } else {
-    return amount * BigInt(10 ** 18);
+    return BigInt(amount) / BigInt(10 ** token[0].decimals);
   }
 };
