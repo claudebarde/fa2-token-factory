@@ -14,10 +14,5 @@ export const displayTokenAmount = (
   if (token.length === 0) return "N/A";
   if (token[0].decimals === undefined) return "N/A";
 
-  if (tokenID === 1) {
-    // wTK doesn't have 18 zero padding
-    return BigInt(amount) / BigInt(10 ** token[0].decimals);
-  } else {
-    return BigInt(amount) / BigInt(10 ** token[0].decimals);
-  }
+  return BigInt(amount) / BigInt(10 ** token[0].decimals);
 };
